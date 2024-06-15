@@ -2,7 +2,7 @@
 import pygame
 import sys
 from settings import *
-from objects import AndGate, Wire, CustomGate
+from logic_circuits import CustomGate
 
 class App:
     def __init__(self):
