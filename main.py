@@ -29,7 +29,7 @@ class App:
         self.fps_rect = self.fps_surf.get_rect(topright=(SCR_WIDTH - 20, 20))
         self.mouse_pos = pygame.mouse.get_pos()
         
-        self.test_gate.update()
+        self.test_gate.update(self.events)
         
         self.screen.blit(self.fps_surf, self.fps_rect)
         
@@ -37,8 +37,9 @@ class App:
         while True:
             self.delta_time = self.clock.tick(FPS)
             self.screen.fill(self.BG_COLOR)
-            
-            for event in pygame.event.get():
+
+            self.events = pygame.event.get()
+            for event in self.events:
                 self.main_event_loop(event)
             
             self.main_game_loop()
