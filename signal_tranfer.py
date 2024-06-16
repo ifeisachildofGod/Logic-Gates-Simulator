@@ -118,6 +118,8 @@ class Wire(SignalTransporter):
         self.starting_point = self.breakpoints[0][0]
         self.ending_point = self.breakpoints[-1][1]
         
+        self.first_pos_tracker = [init_starting_pos, init_ending_pos]
+        
         self.input_node = None
         self.output_node = None
         
@@ -305,14 +307,12 @@ class Wire(SignalTransporter):
     
     def move_breakpoint_starting_point(self, index: int, pos: list):
         index = len(self.breakpoints) - 1 if index == -1 else index
-        assert index < len(self.breakpoints), f'{index} is out of range'
         self.breakpoints[index][0] = pos
         if index > 0:
             self.breakpoints[index - 1][1] = pos
     
     def move_breakpoint_ending_point(self, index: int, pos: list):
         index = len(self.breakpoints) - 1 if index == -1 else index
-        assert index < len(self.breakpoints), f'{index} is out of range'
         self.breakpoints[index][1] = pos
         if index != len(self.breakpoints) - 1:
             self.breakpoints[index + 1][0] = pos
@@ -342,6 +342,7 @@ class Wire(SignalTransporter):
         elif self.input_connected:
             pos = [point, deepcopy(self.breakpoints[0][0])]
             self.breakpoints.insert(0, pos)
+            
             self._add_breakpoint_buttons(self.breakpoints.index(pos))
             for i in range(len(self.wire_move_buttons)):
                 self.wire_move_buttons[i][0] = i
@@ -350,9 +351,11 @@ class Wire(SignalTransporter):
     
     def connected_to(self, node: Node):
         if node.is_input:
+            assert not self.input_connected, 'An input has already been connected to this wire'
             self.input_node = node
             self.input_connected = True
         if node.is_output:
+            assert not self.output_connected, 'An output has already been connected to this wire'
             self.output_node = node
             self.output_connected = True
     
@@ -396,7 +399,7 @@ class Wire(SignalTransporter):
                             on_middle_clicked_func=lambda: self.break_line((starting_point, stopping_point)),
                             on_right_clicked_func=lambda: self.delete_func(self))
             pygame.draw.line(self.screen, self.curr_color, starting_point, stopping_point, self.width)
-            
+    
     def update(self):
         self.curr_color = self.color_on if self.state else self.color_off
 

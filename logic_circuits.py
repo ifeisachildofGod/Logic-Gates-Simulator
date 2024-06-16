@@ -407,7 +407,7 @@ class Circuit:
         self.gate_key_index_map = {}
         
         self.node_base_line = node_base_line
-        
+        self.r = None
         self.add_input()
         self.add_output()
     
@@ -492,7 +492,8 @@ class Circuit:
                 if wire.wire_move_buttons:
                     wire.wire_move_buttons.pop()
             self.wires.append(wire)
-            self.wire_connected_trackers[wire] = True
+            
+            self.wire_connected_trackers[wire] = None
     
     def _make_input_remove_node_func(self, index):
         def func():
@@ -575,17 +576,20 @@ class Circuit:
         
         return func
     
+    def _disconnect_wire(self, wire: Wire):
+        if wire.input_connected:
+            wire.input_node.disconnect(wire)
+        elif wire.output_connected:
+            wire.output_node.disconnect(wire)
+        self.wires.remove(wire)
+        self.wire_connected_trackers[wire] = False
+    
     def update_wires_and_connections(self):
         for wire in self.wires:
             if self.wire_connected_trackers[wire]:
                 if pygame.mouse.get_pressed()[2]:
                     if not self.wire_right_pressed:
-                        if wire.input_connected:
-                            wire.input_node.disconnect(wire)
-                        elif wire.output_connected:
-                            wire.output_node.disconnect(wire)
-                        self.wires.remove(wire)
-                        self.wire_connected_trackers[wire] = False
+                        self._disconnect_wire(wire)
                     self.wire_right_pressed = True
                 else:
                     self.wire_right_pressed = False
@@ -597,14 +601,17 @@ class Circuit:
                             gate_nodes += gate.get_input_nodes() + gate.get_output_nodes()
                         
                         for nodes in gate_nodes + [node for _, node in self.input_node_objects] + [node for node in self.output_nodes]:
-                            ending_point_rect = pygame.Rect(0, 0, 10, 10)
-                            ending_point_rect.center = wire.ending_point
-                            starting_point_rect = pygame.Rect(0, 0, 10, 10)
-                            starting_point_rect.center = wire.starting_point
+                            is_touching_a_connection = nodes.node_button.rect.collidepoint(self.mouse_pos)
                             
-                            if nodes.node_button.rect.collidepoint(wire.ending_point) and not ending_point_rect.colliderect(starting_point_rect):
-                                nodes.connect(wire)
-                                self.wire_connected_trackers[wire] = False
+                            circular_wire_connection = (((nodes.is_input and wire.input_connected)
+                                                            or
+                                                         (nodes.is_output and wire.output_connected))
+                                                        if is_touching_a_connection else False)
+                            
+                            if is_touching_a_connection:
+                                if not circular_wire_connection:
+                                    nodes.connect(wire)
+                                    self.wire_connected_trackers[wire] = False
                                 break
                         else:
                             if True not in [button.update()[-1] for _, button in wire.wire_move_buttons]:
@@ -616,7 +623,13 @@ class Circuit:
                 else:
                     self.wire_left_pressed = False
                 
-                wire.move_breakpoint_ending_point(-1 if wire.output_connected else 0, self.mouse_pos)
+                if wire.output_connected:
+                    wire.move_breakpoint_ending_point(-1, self.mouse_pos)
+                else:
+                    wire.move_breakpoint_starting_point(0, self.mouse_pos)
+            
+            if self.wire_connected_trackers[wire] is None:
+                self.wire_connected_trackers[wire] = True
             wire.update()
     
     def update_gates(self):
