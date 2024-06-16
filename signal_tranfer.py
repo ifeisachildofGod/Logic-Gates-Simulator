@@ -143,26 +143,32 @@ class Wire(SignalTransporter):
         self.hover_tracker_dict = {}
         self.not_hover_tracker_dict = {}
     
+    def get_move_buttons(self):
+        return [button for _, button in self.wire_move_buttons]
+    
     def _move_breakpoint(self, index, button: Button):
         def func():
-            button.set_pos(center=pygame.mouse.get_pos())
-            self.move_breakpoint_ending_point(index, pygame.mouse.get_pos())
+            mouse_pos = pygame.mouse.get_pos()
+            
+            button.set_pos(center=mouse_pos)
+            self.move_breakpoint_ending_point(index, mouse_pos)
         return func
     
     def _add_breakpoint_buttons(self, index):
         button = Button(self.screen,
-                        deepcopy(self.breakpoints[index][1]),
+                        (0, 0),
                         (self.width, self.width),
                         self.curr_color,
                         many_actions_one_click=True,
-                        border_radius=self.width * 2,
-                        on_right_mouse_button_clicked=self.remove_breakpoint(index))
+                        border_radius=self.width * 2)
         
         button.set_pos(center=deepcopy(self.breakpoints[index][1]))
         
-        button.configure(on_left_mouse_button_clicked=self._move_breakpoint(index, button))
+        self.wire_move_buttons.append([0, button])
         
-        self.wire_move_buttons.append([index - 1, button])
+        for i, (_, button) in enumerate(self.wire_move_buttons):
+            self.wire_move_buttons[i][0] = i
+            self.wire_move_buttons[i][1].configure(on_right_mouse_button_clicked=self.remove_breakpoint(i), on_left_mouse_button_clicked=self._move_breakpoint(i, button))
     
     def is_clicked(self,
                    mouse_rect: pygame.Rect,
@@ -327,9 +333,11 @@ class Wire(SignalTransporter):
             else:
                 self.breakpoints[index - 1][1] = self.breakpoints[index][1]
             self.wire_move_buttons.pop(index)
-            for i in range(len(self.wire_move_buttons)):
+            
+            for i, (_, button) in enumerate(self.wire_move_buttons):
                 self.wire_move_buttons[i][0] = i
-                self.wire_move_buttons[i][1].configure(on_right_mouse_button_clicked=self.remove_breakpoint(i))
+                self.wire_move_buttons[i][1].configure(on_right_mouse_button_clicked=self.remove_breakpoint(i), on_left_mouse_button_clicked=self._move_breakpoint(i, button))
+            
             self.breakpoints.pop(index)
         
         return func
@@ -344,10 +352,6 @@ class Wire(SignalTransporter):
             self.breakpoints.insert(0, pos)
             
             self._add_breakpoint_buttons(self.breakpoints.index(pos))
-            for i in range(len(self.wire_move_buttons)):
-                self.wire_move_buttons[i][0] = i
-                button = self.wire_move_buttons[i][1]
-                button.configure(on_right_mouse_button_clicked=lambda: self.remove_breakpoint(i + 1), on_left_mouse_button_clicked=self._move_breakpoint(i + 1, button))
     
     def connected_to(self, node: Node):
         if node.is_input:
@@ -410,11 +414,6 @@ class Wire(SignalTransporter):
             button.update()
             button.configure(bg_color='red')#self.curr_color)
             button.set_pos(center=self.breakpoints[index][1])
-        
-        for i in range(len(self.wire_move_buttons)):
-            self.wire_move_buttons[i][0] = i
-            button = self.wire_move_buttons[i][1]
-            button.configure(on_right_mouse_button_clicked=self.remove_breakpoint(i))
         
         if self.input_node is not None:
             self.breakpoints[-1][1] = self.input_node.node_button.rect.center

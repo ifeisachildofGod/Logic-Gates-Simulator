@@ -407,7 +407,7 @@ class Circuit:
         self.gate_key_index_map = {}
         
         self.node_base_line = node_base_line
-        self.r = None
+        
         self.add_input()
         self.add_output()
     
@@ -486,7 +486,7 @@ class Circuit:
     
     def on_node_clicked(self, input_node: Node):
         if True not in self.wire_connected_trackers.values():
-            wire = Wire(self.screen, input_node.node_button.rect.center, self.mouse_pos, 5, 'pink', 'darkgrey', lambda w: self._remove_wire_func(w))
+            wire = Wire(self.screen, input_node.node_button.rect.center, self.mouse_pos, 5, 'pink', 'darkgrey', lambda w: self._remove_wire(w))
             input_node.connect(wire)
             if input_node.is_input:
                 if wire.wire_move_buttons:
@@ -537,11 +537,15 @@ class Circuit:
             self.gates.pop(index)
         return func
     
-    def _remove_wire_func(self, wire: Wire):
-        if wire.input_node is not None:
-            wire.input_node.set_state(0)
-        wire.disconnect_all()
-        self.wires.remove(wire)
+    def _remove_wire(self, wire: Wire):
+        for button in wire.get_move_buttons():
+            if button.rect.collidepoint(self.mouse_pos) and not self.wire_connected_trackers[wire]:
+                break
+        else:
+            if wire.input_node is not None:
+                wire.input_node.set_state(0)
+            wire.disconnect_all()
+            self.wires.remove(wire)
     
     def make_gate(self, name):
         def func():
