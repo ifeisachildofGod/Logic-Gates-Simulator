@@ -145,6 +145,10 @@ class Button:
             self._set_topleft(self.pos)
     
     def configure(self, **kwargs):
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+        
         bg_color = kwargs.get('bg_color')
         if bg_color is not None:
             self.bg_color = bg_color
@@ -234,11 +238,50 @@ class Button:
         if invisible is not None:
             self.invisible = invisible
         
+        disabled = kwargs.get('disabled')
+        if disabled is not None:
+            self.disabled = disabled
+            if self.disabled:
+                self.orig_hover_state = self.hover
+                self.hover = False
+            else:
+                self.hover = self.orig_hover_state
+        
         mouse_pos = kwargs.get('mouse_pos')
         if mouse_pos is not None:
             self.mouse_pos = mouse_pos
     
-    def _set_color(self, color, opacity: int, hex_: bool = True):
+    def update(self):
+        clicked_info = []
+        
+        if not self.disabled:
+            mouse_rect = pygame.Rect(*self.mouse_pos, 1, 1)
+            left_mouse_clicked = pygame.mouse.get_pressed()[0]
+            middle_mouse_clicked = pygame.mouse.get_pressed()[1]
+            right_mouse_clicked = pygame.mouse.get_pressed()[2]
+            
+            clicked_info = self._isclicked( mouse_rect,
+                                            self.rect,
+                                            left_mouse_clicked,
+                                            middle_mouse_clicked,
+                                            right_mouse_clicked,
+                                            hover_func              =  lambda: self._clicking(click_call_info=('on hover', self.on_hover)),
+                                            not_hover_func          =  lambda: self._clicking(click_call_info=('on not hover', self.on_not_hover)),
+                                            left_click_func         =  lambda: self._clicking(click_call_info=('on left clicked', self.on_left_mouse_button_clicked), many_actions_one_click=self.many_actions_one_click),
+                                            middle_click_func        =  lambda: self._clicking(click_call_info=('on middle clicked', self.on_middle_mouse_button_clicked)),
+                                            right_click_func        =  lambda: self._clicking(click_call_info=('on right clicked', self.on_right_mouse_button_clicked)),
+                                            left_not_clicked_func   =  lambda: self._clicking(click_call_info=('on not left clicked', self.on_not_left_mouse_button_clicked)),
+                                            middle_not_clicked_func  =  lambda: self._clicking(click_call_info=('on not middle clicked', self.on_not_middle_mouse_button_clicked)),
+                                            right_not_clicked_func  =  lambda: self._clicking(click_call_info=('on not right clicked', self.on_not_right_mouse_button_clicked)),
+                            )
+        
+        self._draw()
+        
+        self.mouse_pos = pygame.mouse.get_pos()
+        
+        return clicked_info
+    
+    def _set_color(self, color, opacity: int):
         assert self._is_color(color), f'"{color}" is not a valid color'
         
         if isinstance(color, str):
@@ -264,12 +307,6 @@ class Button:
             color = color[:3]
         
         return color
-    
-    def _rgb_to_hex(self, rgb):
-        rgb = tuple(int(max(0, min(255, component))) for component in rgb)
-        hex_color = "#{:02X}{:02X}{:02X}".format(*rgb)
-        
-        return hex_color
     
     def _is_color(self, color):
         try:
@@ -403,51 +440,12 @@ class Button:
                 if call_func is not None:
                     call_func()
     
-    def disable(self):
-        self.disabled = True
-        self.orig_hover_state = self.hover
-        self.hover = False
-    
-    def enable(self):
-        self.disabled = False
-        self.hover = self.orig_hover_state
-    
     def _draw(self):
         if not self.invisible:
             pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
-    def update(self):
-        clicked_info = []
-        
-        if not self.disabled:
-            mouse_rect = pygame.Rect(*self.mouse_pos, 1, 1)
-            left_mouse_clicked = pygame.mouse.get_pressed()[0]
-            middle_mouse_clicked = pygame.mouse.get_pressed()[1]
-            right_mouse_clicked = pygame.mouse.get_pressed()[2]
-            
-            clicked_info = self._isclicked( mouse_rect,
-                                            self.rect,
-                                            left_mouse_clicked,
-                                            middle_mouse_clicked,
-                                            right_mouse_clicked,
-                                            hover_func              =  lambda: self._clicking(click_call_info=('on hover', self.on_hover)),
-                                            not_hover_func          =  lambda: self._clicking(click_call_info=('on not hover', self.on_not_hover)),
-                                            left_click_func         =  lambda: self._clicking(click_call_info=('on left clicked', self.on_left_mouse_button_clicked), many_actions_one_click=self.many_actions_one_click),
-                                            middle_click_func        =  lambda: self._clicking(click_call_info=('on middle clicked', self.on_middle_mouse_button_clicked)),
-                                            right_click_func        =  lambda: self._clicking(click_call_info=('on right clicked', self.on_right_mouse_button_clicked)),
-                                            left_not_clicked_func   =  lambda: self._clicking(click_call_info=('on not left clicked', self.on_not_left_mouse_button_clicked)),
-                                            middle_not_clicked_func  =  lambda: self._clicking(click_call_info=('on not middle clicked', self.on_not_middle_mouse_button_clicked)),
-                                            right_not_clicked_func  =  lambda: self._clicking(click_call_info=('on not right clicked', self.on_not_right_mouse_button_clicked)),
-                            )
-        
-        self._draw()
-        
-        self.mouse_pos = pygame.mouse.get_pos()
-        
-        return clicked_info
-
 class ScrollableSurface:
     def __init__(self, screen: pygame.Surface, sub_surf: pygame.Surface, sub_surf_pos: tuple, blit_surf_pos: tuple, blit_surf_size: tuple, blit_surf_color=None, scroll_wheel_color='white', scroll_wheel_size: int = 5, scroll_wheel_border_x_offset: float = 4, scroll_wheel_border_y_offset: float = 4, orientation: Literal['x', 'y', 'both'] = 'x') -> None:
         self.screen = screen
@@ -462,7 +460,7 @@ class ScrollableSurface:
         self.sub_surf_pos = sub_surf_pos
         self.sub_surf_rect = self.sub_surf.get_rect(topleft=sub_surf_pos)
         
-        self.blit_surf = pygame.Surface(blit_surf_size)
+        self.blit_surf = pygame.Surface(blit_surf_size, pygame.SRCALPHA)
         self.blit_rect = self.blit_surf.get_rect(topleft=blit_surf_pos)
         if blit_surf_color is not None:
             self.blit_surf.fill(blit_surf_color)
@@ -476,6 +474,12 @@ class ScrollableSurface:
         self.scroll_wheel_y.set_pos(topright=(self.blit_rect.right - self.scroll_wheel_border_x_offset, self.blit_rect.top + self.scroll_wheel_border_y_offset))
     
     def configure(self, **kwargs):
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+            self.scroll_wheel_x.configure(screen=self.screen)
+            self.scroll_wheel_y.configure(screen=self.screen)
+        
         sub_surf = kwargs.get('sub_surf')
         if sub_surf is not None:
             self.sub_surf = sub_surf

@@ -18,10 +18,15 @@ class CustomGate:
         self.button_border_offset = 20
         self.border_offset = 30
         
+        self.new_gate_trackers = {}
+        
         self.current_circuit_name = DEFAULT_CIRCUIT_NAME
         self.circuit_editors: dict[str, Circuit] = {}
-        self.circuit = self.circuit_editors[self.current_circuit_name] = Circuit(self.screen, self.screen.get_height() - self.border_offset - 30)
-        self.new_gate_tracker = self.circuit.gate
+        
+        self.add_buttons_size = 30, 39
+        
+        self.circuit = self.circuit_editors[self.current_circuit_name] = Circuit(self.screen, self.screen.get_height() - self.border_offset - self.add_buttons_size[1], self.add_buttons_size[1])
+        self.new_gate_trackers[self.circuit] = self.circuit.gate
         
         self.add_node_font = pygame.font.SysFont('Arial', 45)
         self.edit_button_font = pygame.font.SysFont('Sans Serif', 20)
@@ -37,9 +42,12 @@ class CustomGate:
         self.textinput_focused = False
         self.has_textinput_focus = False
         
-        self.add_input_button = Button(self.screen, (0, 0), (30, 30), self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=self.circuit.add_input, border_radius=20)
+        self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.add_node_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: print('Not Implemented'), border_radius=20)
+        self.next_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.add_node_font.render('>', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: print('Not Implemented'), border_radius=20)
+        
+        self.add_input_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=self.circuit.add_input, border_radius=20)
         self.add_input_button.set_pos(midbottom=(self.border_offset, self.screen.get_height() - self.border_offset))
-        self.add_output_button = Button(self.screen, (0, 0), (30, 30), self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=self.circuit.add_output, border_radius=20)
+        self.add_output_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=self.circuit.add_output, border_radius=20)
         self.add_output_button.set_pos(midbottom=(self.screen.get_width() - self.border_offset, self.screen.get_height() - self.border_offset))
         
         self.new_gate_circuit_button = Button(self.screen, (0, 0), (100, 20), self.button_colors, image=self.edit_button_font.render('New Circuit', True, self.button_text_colors), border_radius=10, on_left_mouse_button_clicked=lambda: self.new_circuit('_'))
@@ -48,6 +56,7 @@ class CustomGate:
         self.add_gate_button.set_pos(topright=(self.screen.get_width() - self.button_border_offset, self.button_border_offset))
         
         self.gate_options: list[GateBaseClass] = [AndGate(self.screen, (0, 0), self.circuit.on_node_clicked), NotGate(self.screen, (0, 0), self.circuit.on_node_clicked)]
+        
         self.display_gate_buttons_list: list[Button] = []
         
         self.output_nodes = []
@@ -56,22 +65,16 @@ class CustomGate:
         self.gate_display_spacing = 5
         max_height = max(gate_op.button.rect.height for gate_op in self.gate_options) + self.border_offset
         gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
-        gates_surf_width = len(self.gate_options) * ((self.gate_options[0].output_nodes[0].get_rect().right - self.gate_options[0].input_nodes[0].get_rect().left) + self.gate_display_spacing)
-        self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]))
+        gates_surf_width = sum([gate.get_rect().width for gate in self.gate_options]) + (self.gate_display_spacing * (len(self.gate_options) - 1))
+        self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]), pygame.SRCALPHA)
         
-        for gate_index, gate_op in enumerate(self.gate_options):
+        width = 0
+        for gate_op in self.gate_options:
             display_gate = gate_op.copy()
-            width = self.gate_options[gate_index - 1].output_nodes[0].get_rect().width + self.gate_options[gate_index - 1].node_pin_size[0]
-            if gate_index:
-                width += self.gate_display_spacing + (self.gate_options[gate_index - 1].output_nodes[0].get_rect().right - self.gate_options[gate_index - 1].input_nodes[0].get_rect().left + self.gate_options[gate_index - 1].node_pin_size[0])
+            display_gate.configure(screen=self.gates_surf, pos=(width, (self.gates_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
             
-            display_gate.__init__(display_gate.name,
-                                  self.gates_surf,
-                                  (display_gate.button.rect.x + width, (self.gates_surf.get_height() / 2) -(display_gate.button.rect.height / 2)),
-                                  display_gate.input_amt,
-                                  display_gate.output_amt,
-                                  display_gate.logic_func,
-                                  display_gate.node_on_click_func)
+            width += self.gate_display_spacing + display_gate.get_rect().width
+            
             dsp_but = display_gate.button.copy()
             dsp_but.configure(on_left_mouse_button_clicked=self.circuit.make_add_gate_func(gate_op), many_actions_one_click=False, invisible=True)
             
@@ -88,7 +91,7 @@ class CustomGate:
                                                     orientation='x')
         
         for index, gate in enumerate(self.gate_options):
-            gate.button.configure(bg_color='red', on_right_mouse_button_clicked=self.circuit.make_remove_gate_func(index))
+            gate.button.configure(on_right_mouse_button_clicked=self.circuit.make_remove_gate_func(index))
         
         self.left_mouse_clicked_dict = {}
         self.left_mouse_clicked_outside_dict = {}
@@ -288,20 +291,18 @@ class CustomGate:
     def _add_gate_to_viewer(self, gate: GateBaseClass):
         display_gate = gate.copy()
         
-        gates_surf_width = sum((gate.output_nodes[0].get_rect().right - gate.input_nodes[0].get_rect().left) for gate in self.gate_options) + (self.gate_display_spacing * len(self.gate_options))
-        node_size_offset = self.gate_options[0].output_nodes[0].get_rect().width + self.gate_options[0].node_pin_size[0]
-        new_gate_surf = pygame.Surface((gates_surf_width, self.gates_surf.get_height()))
-        display_gate.__init__(display_gate.name,
-                              new_gate_surf,
-                              (self.gates_surf.get_width() + node_size_offset, (new_gate_surf.get_height() / 2) -(display_gate.button.rect.height / 2)),
-                              display_gate.input_amt,
-                              display_gate.output_amt,
-                              display_gate.logic_func,
-                              display_gate.node_on_click_func)
+        gates_surf_width = sum([gate.get_rect().width for gate in self.gate_options]) + (self.gate_display_spacing * len(self.gate_options))
+        # node_size_offset = self.gate_options[0].output_nodes[0].get_rect().width + self.gate_options[0].node_pin_size[0]
+        
+        new_gate_surf = pygame.Surface((gates_surf_width, self.gates_surf.get_height()), pygame.SRCALPHA)
+        display_gate.configure(screen=new_gate_surf, pos=(self.gates_surf.get_width() + self.gate_display_spacing, (new_gate_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
+        
         new_gate_surf.blit(self.gates_surf, (0, 0))
         display_gate.update()
         self.gates_surf = new_gate_surf.copy()
-        self.gate_option_viewer.configure(sub_surf=self.gates_surf, sub_surf_pos=(max((self.gate_option_viewer.blit_surf.get_width() / 2) - (self.gate_option_viewer.sub_surf.get_width() / 2), 0), self.gate_option_viewer.sub_surf_pos[1]))
+        
+        surf_pos_x = max((self.gate_option_viewer.blit_surf.get_width() / 2) - (self.gate_option_viewer.sub_surf.get_width() / 2), 0)
+        self.gate_option_viewer.configure(sub_surf=self.gates_surf, sub_surf_pos=(surf_pos_x, self.gate_option_viewer.sub_surf_pos[1]))
         
         dsp_but = display_gate.button.copy()
         
@@ -339,7 +340,7 @@ class CustomGate:
     def new_circuit(self, name):
         self.update_gate(self.current_circuit_name)
         self.current_circuit_name = self.textinput_custom.value = name
-        self.circuit = self.circuit_editors[self.current_circuit_name] = Circuit(self.screen, min(self.add_output_button.rect.top, self.add_input_button.rect.top))
+        self.circuit = self.circuit_editors[self.current_circuit_name] = Circuit(self.screen, min(self.add_output_button.rect.top, self.add_input_button.rect.top), self.add_input_button.rect.height)
     
     def update_gate(self, name):
         pass
@@ -374,24 +375,23 @@ class CustomGate:
         
         self.circuit.update()
         
-        if self.new_gate_tracker != self.circuit.gate:
+        if self.new_gate_trackers[self.circuit] != self.circuit.gate:
             self.gate_options.append(self.circuit.gate)
             self._add_gate_to_viewer(self.circuit.gate)
-            self.new_gate_tracker = self.circuit.gate
+            self.new_gate_trackers[self.circuit] = self.circuit.gate
         
         self.gate_option_viewer.update()
         
         self.update_textinput()
         
         for button in self.display_gate_buttons_list:
-            mouse = pygame.mouse.get_pos()
-            mouse_pos = (mouse[0] - self.gate_option_viewer.blit_rect.x - self.gate_option_viewer.sub_surf_rect.x,
-                         mouse[1] - self.gate_option_viewer.blit_rect.y - self.gate_option_viewer.sub_surf_rect.y)
+            mouse_pos = (self.mouse_pos[0] - self.gate_option_viewer.blit_rect.x - self.gate_option_viewer.sub_surf_rect.x,
+                         self.mouse_pos[1] - self.gate_option_viewer.blit_rect.y - self.gate_option_viewer.sub_surf_rect.y)
             button.configure(mouse_pos=mouse_pos)
             button.update()
         
 class Circuit:
-    def __init__(self, screen: pygame.Surface, node_base_line: int) -> None:
+    def __init__(self, screen: pygame.Surface, node_base_line: int, add_nodes_buttons_height: int) -> None:
         self.screen = screen
         
         self.in_out_wire_size = 10, 20
@@ -407,6 +407,7 @@ class Circuit:
         self.gate_key_index_map = {}
         
         self.node_base_line = node_base_line
+        self.add_nodes_buttons_height = add_nodes_buttons_height
         
         self.add_input()
         self.add_output()
@@ -424,12 +425,15 @@ class Circuit:
             height = but.rect.height + box_offset
             max_nodes_amt = int((self.screen.get_height() - (self.screen.get_height() - self.node_base_line)) / height)
             width = (but.rect.width + node.node_button.rect.width + self.in_out_wire_size[0]) + box_offset
-            half_scr_offset = (self.screen.get_height() / 2) - ((min(len(self.input_node_objects), max_nodes_amt) * height) / 2) - (self.screen.get_height() - self.node_base_line)
+            half_scr_offset = (self.screen.get_height() / 2) - ((min(len(self.input_node_objects), max_nodes_amt) * height) / 2) - (self.screen.get_height() - (self.node_base_line + self.add_nodes_buttons_height))
             
             x = box_offset + (math.floor(index / max_nodes_amt) * width)
             y = ((index % max_nodes_amt) * height) + half_scr_offset
             but.set_pos(topleft=(x, y))
-            node.set_pos((but.rect.x + but.rect.width + self.in_out_wire_size[0], but.rect.centery - (self.in_out_wire_size[1] / 2)))
+            
+            node_center_x = (but.rect.x + but.rect.width + self.in_out_wire_size[0]) + (node.node_button.rect.width / 2)
+            node_center_y = (but.rect.centery - (self.in_out_wire_size[1] / 2)) + (node.node_button.rect.height / 2)
+            node.node_button.set_pos(center=(node_center_x - (node_center_x % GRID_SIZE), node_center_y - (node_center_y % GRID_SIZE)))
     
     def _set_output_node_positions(self, delay=False):
         if delay:
@@ -440,11 +444,11 @@ class Circuit:
             height = node.node_button.rect.height + box_offset
             max_nodes_amt = int((self.screen.get_height() - (self.screen.get_height() - self.node_base_line)) / height)
             width = node.node_button.rect.width + box_offset
-            half_scr_offset = (self.screen.get_height() / 2) - ((min(len(self.output_nodes), max_nodes_amt) * height) / 2) - (self.screen.get_height() - self.node_base_line)
+            half_scr_offset = (self.screen.get_height() / 2) - ((min(len(self.output_nodes), max_nodes_amt) * height) / 2) - (self.screen.get_height() - (self.node_base_line + self.add_nodes_buttons_height))
             
-            x = self.screen.get_width() - node.node_button.rect.width - box_offset - (math.floor(index / max_nodes_amt) * width)
-            y = ((index % max_nodes_amt) * height) + half_scr_offset
-            node.set_pos((x, y))
+            centerx = (self.screen.get_width() - node.node_button.rect.width - box_offset - (math.floor(index / max_nodes_amt) * width)) + (node.node_button.rect.width / 2)
+            centery = (((index % max_nodes_amt) * height) + half_scr_offset) + (node.node_button.rect.height / 2)
+            node.node_button.set_pos(center=(centerx - (centerx % GRID_SIZE), centery - (centery % GRID_SIZE)))
     
     def add_input(self):
         ctrl_button = Button(self.screen,
@@ -494,6 +498,9 @@ class Circuit:
             self.wires.append(wire)
             
             self.wire_connected_trackers[wire] = None
+        # else:
+        #     for key in self.wire_connected_trackers.keys():
+        #         self.wire_connected_trackers[key] = False
     
     def _make_input_remove_node_func(self, index):
         def func():
@@ -652,7 +659,7 @@ class Circuit:
             out.update()
     
     def update(self):
-        self.mouse_pos = pygame.mouse.get_pos()
+        self.mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in pygame.mouse.get_pos()))
         
         self.update_inputs()
         self.update_outputs()

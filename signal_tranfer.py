@@ -1,7 +1,8 @@
 import pygame
 from copy import deepcopy
-from typing import Any, Callable
+from typing import Callable
 from widgets import Button
+from settings import *
 
 class SignalTransporter:
     def __init__(self, screen, color_on, color_off) -> None:
@@ -9,6 +10,19 @@ class SignalTransporter:
         self.state = 0
         self.color_on = color_on
         self.color_off = color_off
+    
+    def configure(self, **kwargs):
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+        
+        color_on = kwargs.get('color_on')
+        if color_on is not None:
+            self.color_on = color_on
+        
+        color_off = kwargs.get('color_off')
+        if color_off is not None:
+            self.color_off = color_off
     
     def draw(self):
         pass
@@ -23,36 +37,80 @@ class SignalTransporter:
         return int(self.state)
 
 class Node(SignalTransporter):
-    def __init__(self, screen: pygame.Surface, pos: tuple, size: tuple, color_on, color_off, is_input, border_radius: int = 5, static: bool = True, is_click_toogleable: bool = True, on_click_func: Callable[[Any], None] = None) -> None:
+    def __init__(self, screen: pygame.Surface, pos: tuple, size: tuple, color_on, color_off, is_input, border_radius: int = 5, static: bool = True, is_click_toogleable: bool = True, on_click_func: Callable = None) -> None:
         super().__init__(screen, color_on, color_off)
         self.pos = pos
         self.size = size
         self.border_radius = border_radius
         self.static = static
         self.is_input = is_input
-        self.is_output = not is_input
-        # if is_input is None:
-        #     self.is_input = True
-        #     self.is_output = True
-        self.is_click_toogleable = is_click_toogleable
+        self.is_output = not self.is_input
+        self.on_click_func = on_click_func
         
-        def func():
-            if self.is_click_toogleable:
-                if not self.static:
-                    self.set_state(0 if self.state else 1)
-            if on_click_func is not None:
-                on_click_func(self)
+        self.is_click_toogleable = is_click_toogleable
         
         self.node_button = Button(self.screen,
                                   self.pos,
                                   self.size,
                                   self.color_off if self.state else self.color_off,
                                   hover = not self.static,
-                                  on_left_mouse_button_clicked=func,
                                   border_radius=self.border_radius)
+        self._update_click_func()
         
         self.connected_outputs = []
         self.connected_inputs = []
+    
+    def configure(self, **kwargs):
+        super().configure()
+        
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+            self.node_button.configure(screen=self.screen)
+        
+        pos = kwargs.get('pos')
+        if pos is not None:
+            self.pos = pos
+            self.node_button.configure(pos=self.pos)
+        
+        size = kwargs.get('size')
+        if size is not None:
+            self.size = size
+            self.node_button.configure(size=self.size)
+        
+        is_input = kwargs.get('is_input')
+        if is_input is not None:
+            self.is_input = is_input
+            self.is_output = not self.is_input
+        
+        border_radius = kwargs.get('border_radius')
+        if border_radius is not None:
+            self.border_radius = border_radius
+        
+        static = kwargs.get('static')
+        if static is not None:
+            self.static = static
+            self._update_click_func()
+        
+        is_click_toogleable = kwargs.get('is_click_toogleable')
+        if is_click_toogleable is not None:
+            self.is_click_toogleable = is_click_toogleable
+            self._update_click_func()
+        
+        on_click_func = kwargs.get('on_click_func')
+        if on_click_func is not None:
+            self.on_click_func = on_click_func
+            self._update_click_func()
+    
+    def _update_click_func(self):
+        def func():
+            if self.is_click_toogleable:
+                if not self.static:
+                    self.set_state(0 if self.state else 1)
+            if self.on_click_func is not None:
+                self.on_click_func(self)
+        
+        self.node_button.configure(on_left_mouse_button_clicked=func)
     
     def set_pos(self, pos):
         self.node_button.set_pos(topleft=pos)
@@ -148,10 +206,8 @@ class Wire(SignalTransporter):
     
     def _move_breakpoint(self, index, button: Button):
         def func():
-            mouse_pos = pygame.mouse.get_pos()
-            
-            button.set_pos(center=mouse_pos)
-            self.move_breakpoint_ending_point(index, mouse_pos)
+            button.set_pos(center=self.mouse_pos)
+            self.move_breakpoint_ending_point(index, self.mouse_pos)
         return func
     
     def _add_breakpoint_buttons(self, index):
@@ -385,15 +441,15 @@ class Wire(SignalTransporter):
                 self._add_breakpoint_buttons(i)
                 prev_starting_pos = list(self.breakpoints[i][0]).copy()
                 if i != 0:
-                    self.breakpoints[i][0] = pygame.mouse.get_pos()
-                    self.breakpoints.insert(i - 1, [self.breakpoints[i - 1][1], pygame.mouse.get_pos()])
+                    self.breakpoints[i][0] = self.mouse_pos
+                    self.breakpoints.insert(i - 1, [self.breakpoints[i - 1][1], self.mouse_pos])
                 else:
-                    self.breakpoints.insert(0, [tuple(prev_starting_pos), pygame.mouse.get_pos()])
-                    self.breakpoints[1][0] = pygame.mouse.get_pos()
+                    self.breakpoints.insert(0, [tuple(prev_starting_pos), self.mouse_pos])
+                    self.breakpoints[1][0] = self.mouse_pos
     
     def draw(self):
         mouse_rect = pygame.Rect(0, 0, 4, 4)
-        mouse_rect.center = pygame.mouse.get_pos()
+        mouse_rect.center = self.mouse_pos
         
         for starting_point, stopping_point in self.breakpoints:
             line_pos = (tuple(starting_point), tuple(stopping_point))
@@ -405,8 +461,11 @@ class Wire(SignalTransporter):
             pygame.draw.line(self.screen, self.curr_color, starting_point, stopping_point, self.width)
     
     def update(self):
+        # self.mouse_pos = pygame.mouse.get_pos()
+        self.mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in pygame.mouse.get_pos()))
+        
         self.curr_color = self.color_on if self.state else self.color_off
-
+        
         super().update()
         self.starting_point = self.breakpoints[0][0]
         self.ending_point = self.breakpoints[-1][1]
