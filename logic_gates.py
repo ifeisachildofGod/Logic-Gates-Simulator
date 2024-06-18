@@ -23,6 +23,9 @@ class GateBaseClass:
         self.node_on_color = 'pink'
         self.node_off_color = 'grey'
         
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
+        
         text_surf = self.font.render(self.name, True, self.text_color)
         
         self.input_amt = input_amt
@@ -35,8 +38,12 @@ class GateBaseClass:
         
         self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
         
+        self.render = True
+        
+        self.input_nodes_state_tracker = []
+        
         self.input_nodes = [Node(self.screen,
-                                 (pos[0] - (pos[0] % GRID_SIZE), (self._get_node_y_pos(input_amt, ni) - (self._get_node_y_pos(input_amt, ni) % GRID_SIZE))),
+                                 self.pos[0], self._get_node_y_pos(self.input_amt, ni),
                                  self.node_size,
                                  color_on=self.node_on_color,
                                  color_off=self.node_off_color,
@@ -52,8 +59,8 @@ class GateBaseClass:
                              self.gate_color,
                              hover=False,
                              many_actions_one_click=True,
-                             on_left_mouse_button_clicked=lambda: self._on_move(self.mouse_pos),
-                             on_not_left_mouse_button_clicked=lambda: self._on_not_move(self.mouse_pos),
+                             on_left_mouse_button_clicked=lambda: self._on_move(self.grid_mouse_pos),
+                             on_not_left_mouse_button_clicked=lambda: self._on_not_move(self.grid_mouse_pos),
                              image=text_surf
                              )
         
@@ -77,6 +84,8 @@ class GateBaseClass:
         return pygame.Rect(x, y, width, height)
     
     def _get_node_y_pos(self, amt, index):
+        if amt == 1:
+            return self.pos[1] + ((self.button_size[1] / 2) - (self.node_size[1] / 2))
         return (self.pos[1] + (index / (amt - (1 + 0.000000001))) * self.button_size[1]) - self.node_size[1] * (index / (amt - (1 + 0.000000001)))
     
     def configure(self, **kwargs):
@@ -101,9 +110,55 @@ class GateBaseClass:
             size = (text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2)))
             self.button.configure(size=size, image=text_surf)
         
+        input_amt = kwargs.get('input_amt')
+        if input_amt is not None:
+            self.input_amt = input_amt
+            self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
+            self.button.configure(size=self.button_size)
+            new_node = Node(self.screen,
+                            (0, 0),
+                            self.node_size,
+                            color_on=self.node_on_color,
+                            color_off=self.node_off_color,
+                            static=False,
+                            is_input=True,
+                            border_radius=max(self.node_size) * 5,
+                            is_click_toogleable=False,
+                            on_click_func=self.node_on_click_func)
+            self.input_nodes.append(new_node)
+            for index, node in enumerate(self.input_nodes):
+                node.configure(pos=self._get_node_pos(self.input_amt, index))
+        
+        output_amt = kwargs.get('output_amt')
+        if output_amt is not None:
+            self.output_amt = output_amt
+            self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
+            self.button.configure(size=self.button_size)
+            new_node = Node(self.screen,
+                            (0, 0),
+                            self.node_size,
+                            color_on=self.node_on_color,
+                            color_off=self.node_off_color,
+                            static=False,
+                            is_input=True,
+                            border_radius=max(self.node_size) * 5,
+                            is_click_toogleable=False,
+                            on_click_func=self.node_on_click_func)
+            self.input_nodes.append(new_node)
+            for index, node in enumerate(self.input_nodes):
+                node.configure(pos=(self.button.rect.right + self.node_pin_size[0], self._get_node_y_pos(output_amt, index)))
+        
         logic_func = kwargs.get('logic_func')
         if logic_func is not None:
             self.logic_func = logic_func
+        
+        render = kwargs.get('render')
+        if render is not None:
+            self.render = render
+        
+        mouse_pos = kwargs.get('mouse_pos')
+        if mouse_pos is not None:
+            self.mouse_pos = mouse_pos
         
         node_on_click_func = kwargs.get('node_on_click_func')
         if node_on_click_func is not None:
@@ -151,24 +206,31 @@ class GateBaseClass:
     
     def draw(self):
         for node_in in self.input_nodes:
-            pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.left - self.node_pin_size[0], node_in.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
+            if self.render:
+                pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.left - self.node_pin_size[0], node_in.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
             node_in.update()
+            node_in.configure(render=self.render)
         
         for node_out in self.output_nodes:
-            pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.right, node_out.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
+            if self.render:
+                pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.right, node_out.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
             node_out.update()
+            node_out.configure(render=self.render)
     
-    def logic(self):
-        outputs = self.logic_func([node.get_state() for node in self.input_nodes])
+    def logic(self, input_states):
+        outputs = self.logic_func(input_states)
         for index, state in enumerate(outputs):
             self.output_nodes[index].set_state(state)
     
     def update(self):
-        self.mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in pygame.mouse.get_pos()))
-        
-        self.logic()
+        input_states = [node.get_state() for node in self.input_nodes]
+        self.logic(input_states)
         self.draw()
         self.button.update()
+        self.button.configure(render=self.render)
+        
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
 
 class AndGate(GateBaseClass):
     def __init__(self, screen, pos, on_click_func) -> None:
@@ -177,4 +239,8 @@ class AndGate(GateBaseClass):
 class NotGate(GateBaseClass):
     def __init__(self, screen, pos, on_click_func) -> None:
         super().__init__('Not', screen, pos, 1, 1, lambda inputs: [not inputs[0]], on_click_func)
+
+# class TimeGate(GateBaseClass):
+#     def __init__(self, screen, pos, on_click_func) -> None:
+#         super().__init__('Timer', screen, pos, 1, 1, lambda inputs: [not inputs[0]], on_click_func)
 

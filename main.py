@@ -26,7 +26,8 @@ class App:
     
     def main_game_loop(self):
         self.fps_surf = self.font.render(f'FPS: {round(self.clock.get_fps())}', False, 'white')
-        self.fps_rect = self.fps_surf.get_rect(topright=(SCR_WIDTH - 20, 20))
+        self.fps_rect = self.fps_surf.get_rect(bottomright=(SCR_WIDTH - 20, SCR_HEIGHT))
+        
         self.mouse_pos = pygame.mouse.get_pos()
         
         self.test_gate.update(self.events)

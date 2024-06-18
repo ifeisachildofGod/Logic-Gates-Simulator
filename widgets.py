@@ -23,7 +23,7 @@ class Button:
                  image: pygame.Surface = None,
                  scale_img: bool = False,
                  img_offset: int = 0,
-                 invisible: bool = False) -> None:
+                 render: bool = True) -> None:
         
         self.pos = pos
         self.size = size
@@ -31,7 +31,7 @@ class Button:
         self.on_hover = on_hover
         self.bg_color = bg_color
         self.scale_img = scale_img
-        self.invisible = invisible
+        self.render = render
         self.img_offset = img_offset
         self.on_not_hover = on_not_hover
         self.border_radius = border_radius
@@ -90,7 +90,7 @@ class Button:
                       image = self.image,
                       scale_img = self.scale_img,
                       img_offset = self.img_offset,
-                      invisible = self.invisible)
+                      render = self.render)
     
     def set_pos(self, **kwargs):
         pos = (0, 0)
@@ -212,11 +212,14 @@ class Button:
             self.img_rect = self.image_surf.get_rect(center=self.rect.center)
         
         image = kwargs.get('image')
-        if image is not None:
-            self.image_surf = self.image = image
-            if self.scale_img:
-                self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-            self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+        if 'image' in kwargs:
+            if image is not None:
+                self.image_surf = self.image = image
+                if self.scale_img:
+                    self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
+                self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+            else:
+                self.image_surf = self.image = None
         
         scale_img = kwargs.get('scale_img')
         if scale_img is not None:
@@ -234,9 +237,9 @@ class Button:
                     self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
                 self.img_rect = self.image_surf.get_rect(center=self.rect.center)
         
-        invisible = kwargs.get('invisible')
-        if invisible is not None:
-            self.invisible = invisible
+        render = kwargs.get('render')
+        if render is not None:
+            self.render = render
         
         disabled = kwargs.get('disabled')
         if disabled is not None:
@@ -275,7 +278,8 @@ class Button:
                                             right_not_clicked_func  =  lambda: self._clicking(click_call_info=('on not right clicked', self.on_not_right_mouse_button_clicked)),
                             )
         
-        self._draw()
+        if self.render:
+            self._draw()
         
         self.mouse_pos = pygame.mouse.get_pos()
         
@@ -441,8 +445,7 @@ class Button:
                     call_func()
     
     def _draw(self):
-        if not self.invisible:
-            pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius)
+        pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
@@ -458,10 +461,12 @@ class ScrollableSurface:
         
         self.sub_surf = sub_surf
         self.sub_surf_pos = sub_surf_pos
-        self.sub_surf_rect = self.sub_surf.get_rect(topleft=sub_surf_pos)
+        self.blit_surf_pos = blit_surf_pos
+        self.sub_surf_rect = self.sub_surf.get_rect(topleft=self.sub_surf_pos)
         
         self.blit_surf = pygame.Surface(blit_surf_size, pygame.SRCALPHA)
         self.blit_rect = self.blit_surf.get_rect(topleft=blit_surf_pos)
+        
         if blit_surf_color is not None:
             self.blit_surf.fill(blit_surf_color)
         
@@ -480,29 +485,34 @@ class ScrollableSurface:
             self.scroll_wheel_x.configure(screen=self.screen)
             self.scroll_wheel_y.configure(screen=self.screen)
         
-        sub_surf = kwargs.get('sub_surf')
-        if sub_surf is not None:
-            self.sub_surf = sub_surf
+        blit_surf_color = kwargs.get('blit_surf_color')
+        if 'blit_surf_color' in kwargs:
+            self.blit_surf_color = blit_surf_color
+            if blit_surf_color is not None:
+                self.blit_surf.fill(self.blit_surf_color)
+            else:
+                self.blit_surf = pygame.Surface(blit_surf_size, pygame.SRCALPHA)
         
         blit_surf_size = kwargs.get('blit_surf_size')
         if blit_surf_size is not None:
             self.blit_surf_size = blit_surf_size
-            self.blit_surf = pygame.Surface(self.blit_surf_size)
+            self.blit_surf = pygame.Surface(self.blit_surf_size, pygame.SRCALPHA)
+            self.blit_rect = self.blit_surf.get_rect(topleft=self.blit_surf_pos)
+        
+        blit_surf_pos = kwargs.get('blit_surf_pos')
+        if blit_surf_pos is not None:
+            self.blit_surf_pos = blit_surf_pos
+            self.blit_rect = self.blit_surf.get_rect(topleft=self.blit_surf_pos)
         
         sub_surf_pos = kwargs.get('sub_surf_pos')
         if sub_surf_pos is not None:
             self.sub_surf_pos = sub_surf_pos
             self.sub_surf_rect.topleft = self.sub_surf_pos
         
-        blit_surf_pos = kwargs.get('blit_surf_pos')
-        if blit_surf_pos is not None:
-            self.blit_surf_pos = blit_surf_pos
-            self.blit_rect.topleft = self.blit_surf_pos
-        
-        blit_surf_color = kwargs.get('blit_surf_color')
-        if blit_surf_color is not None:
-            self.blit_surf_color = blit_surf_color
-            self.blit_surf.fill(blit_surf_color)
+        sub_surf = kwargs.get('sub_surf')
+        if sub_surf is not None:
+            self.sub_surf = sub_surf
+            self.sub_surf_rect = self.sub_surf.get_rect(topleft=self.sub_surf_pos)
         
         scroll_wheel_color = kwargs.get('scroll_wheel_color')
         if scroll_wheel_color is not None:
@@ -568,7 +578,9 @@ class ScrollableSurface:
     
     def update(self):
         self.draw()
+        
         self.sub_surf_rect = self.sub_surf.get_rect(topleft=self.sub_surf_rect.topleft)
+        self.blit_rect = self.blit_surf.get_rect(topleft=self.blit_surf_pos)
         
         if self.show_x_slider:
             sw_x_width = min((self.blit_rect.width / self.sub_surf_rect.width) * self.blit_rect.width, self.blit_rect.width - (self.scroll_wheel_border_x_offset * 2))

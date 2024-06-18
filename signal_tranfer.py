@@ -10,6 +10,7 @@ class SignalTransporter:
         self.state = 0
         self.color_on = color_on
         self.color_off = color_off
+        self.render = True
     
     def configure(self, **kwargs):
         screen = kwargs.get('screen')
@@ -23,6 +24,14 @@ class SignalTransporter:
         color_off = kwargs.get('color_off')
         if color_off is not None:
             self.color_off = color_off
+        
+        mouse_pos = kwargs.get('mouse_pos')
+        if mouse_pos is not None:
+            self.mouse_pos = mouse_pos
+        
+        render = kwargs.get('render')
+        if render is not None:
+            self.render = render
     
     def draw(self):
         pass
@@ -47,6 +56,8 @@ class Node(SignalTransporter):
         self.is_output = not self.is_input
         self.on_click_func = on_click_func
         
+        self.mouse_pos = pygame.mouse.get_pos()
+        
         self.is_click_toogleable = is_click_toogleable
         
         self.node_button = Button(self.screen,
@@ -60,13 +71,28 @@ class Node(SignalTransporter):
         self.connected_outputs = []
         self.connected_inputs = []
     
+    def copy(self):
+        return Node(self.screen,
+                    self.pos,
+                    self.size,
+                    self.color_on,
+                    self.color_off,
+                    self.is_input,
+                    self.border_radius,
+                    self.static,
+                    self.is_click_toogleable,
+                    self.on_click_func)
+    
     def configure(self, **kwargs):
-        super().configure()
+        super().configure(**kwargs)
         
         screen = kwargs.get('screen')
         if screen is not None:
-            self.screen = screen
             self.node_button.configure(screen=self.screen)
+        
+        render = kwargs.get('render')
+        if render is not None:
+            self.render = render
         
         pos = kwargs.get('pos')
         if pos is not None:
@@ -140,10 +166,12 @@ class Node(SignalTransporter):
     def disconnect_all(self):
         if self.is_input:
             for wire in self.connected_inputs:
+                self.disconnect(wire)
                 wire.disconnect_all()
             self.connected_inputs.clear()
         if self.is_output:
             for wire in self.connected_outputs:
+                self.disconnect(wire)
                 wire.disconnect_all()
             self.connected_outputs.clear()
     
@@ -152,7 +180,11 @@ class Node(SignalTransporter):
     
     def draw(self):
         self.node_button.update()
-        self.node_button.configure(bg_color=self.color_on if self.state else self.color_off, hover = not self.static and self.state, on_click_shade_val = 255 if self.static else 200)
+        self.node_button.configure(bg_color=self.color_on if self.state else self.color_off,
+                                   hover = not self.static and self.state,
+                                   on_click_shade_val = 255 if self.static else 200,
+                                   render=self.render,
+                                   mouse_pos=self.mouse_pos)
     
     def update(self):
         super().update()
@@ -162,6 +194,8 @@ class Node(SignalTransporter):
         if self.is_output:
             for wire in self.connected_outputs:
                 wire.set_state(self.get_state())
+        
+        self.mouse_pos = pygame.mouse.get_pos()
 
 class Wire(SignalTransporter):
     def __init__(self, screen: pygame.Surface, init_starting_pos: list, init_ending_pos: list, width: int, color_on, color_off, delete_func: Callable) -> None:
@@ -177,6 +211,9 @@ class Wire(SignalTransporter):
         self.ending_point = self.breakpoints[-1][1]
         
         self.first_pos_tracker = [init_starting_pos, init_ending_pos]
+        
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
         
         self.input_node = None
         self.output_node = None
@@ -201,13 +238,25 @@ class Wire(SignalTransporter):
         self.hover_tracker_dict = {}
         self.not_hover_tracker_dict = {}
     
+    def copy(self):
+        return Wire(self.screen,
+                    self.breakpoints[0][0],
+                    self.breakpoints[0][1],
+                    self.width,
+                    self.color_on,
+                    self.color_off,
+                    self.delete_func)
+    
     def get_move_buttons(self):
         return [button for _, button in self.wire_move_buttons]
     
+    def is_connected_to(self, node: Node):
+        return self.input_node is node or self.output_node is node
+    
     def _move_breakpoint(self, index, button: Button):
         def func():
-            button.set_pos(center=self.mouse_pos)
-            self.move_breakpoint_ending_point(index, self.mouse_pos)
+            button.set_pos(center=self.grid_mouse_pos)
+            self.move_breakpoint_ending_point(index, self.grid_mouse_pos)
         return func
     
     def _add_breakpoint_buttons(self, index):
@@ -441,15 +490,15 @@ class Wire(SignalTransporter):
                 self._add_breakpoint_buttons(i)
                 prev_starting_pos = list(self.breakpoints[i][0]).copy()
                 if i != 0:
-                    self.breakpoints[i][0] = self.mouse_pos
-                    self.breakpoints.insert(i - 1, [self.breakpoints[i - 1][1], self.mouse_pos])
+                    self.breakpoints[i][0] = self.grid_mouse_pos
+                    self.breakpoints.insert(i - 1, [self.breakpoints[i - 1][1], self.grid_mouse_pos])
                 else:
-                    self.breakpoints.insert(0, [tuple(prev_starting_pos), self.mouse_pos])
-                    self.breakpoints[1][0] = self.mouse_pos
+                    self.breakpoints.insert(0, [tuple(prev_starting_pos), self.grid_mouse_pos])
+                    self.breakpoints[1][0] = self.grid_mouse_pos
     
     def draw(self):
         mouse_rect = pygame.Rect(0, 0, 4, 4)
-        mouse_rect.center = self.mouse_pos
+        mouse_rect.center = self.grid_mouse_pos
         
         for starting_point, stopping_point in self.breakpoints:
             line_pos = (tuple(starting_point), tuple(stopping_point))
@@ -458,12 +507,10 @@ class Wire(SignalTransporter):
                             line_pos,
                             on_middle_clicked_func=lambda: self.break_line((starting_point, stopping_point)),
                             on_right_clicked_func=lambda: self.delete_func(self))
-            pygame.draw.line(self.screen, self.curr_color, starting_point, stopping_point, self.width)
+            if self.render:
+                pygame.draw.line(self.screen, self.curr_color, starting_point, stopping_point, self.width)
     
     def update(self):
-        # self.mouse_pos = pygame.mouse.get_pos()
-        self.mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in pygame.mouse.get_pos()))
-        
         self.curr_color = self.color_on if self.state else self.color_off
         
         super().update()
@@ -471,11 +518,14 @@ class Wire(SignalTransporter):
         self.ending_point = self.breakpoints[-1][1]
         for index, button in self.wire_move_buttons:
             button.update()
-            button.configure(bg_color='red')#self.curr_color)
+            button.configure(bg_color='red', render=self.render)#self.curr_color)
             button.set_pos(center=self.breakpoints[index][1])
         
         if self.input_node is not None:
             self.breakpoints[-1][1] = self.input_node.node_button.rect.center
         if self.output_node is not None:
             self.breakpoints[0][0] = self.output_node.node_button.rect.center
+        
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
 
