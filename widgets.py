@@ -18,6 +18,10 @@ class Button:
                  on_not_right_mouse_button_clicked: Callable = None,
                  many_actions_one_click: bool = False,
                  border_radius: int = 4,
+                 border_top_left_radius: int = -1,
+                 border_top_right_radius: int = -1,
+                 border_bottom_left_radius: int = -1,
+                 border_bottom_right_radius: int = -1,
                  on_hover_shade_val: float = 150,
                  on_click_shade_val: float = 200,
                  image: pygame.Surface = None,
@@ -40,6 +44,10 @@ class Button:
         self.on_hover_shade_val = on_hover_shade_val
         self.on_click_shade_val = on_click_shade_val
         self.many_actions_one_click = many_actions_one_click
+        self.border_top_left_radius = border_top_left_radius
+        self.border_top_right_radius = border_top_right_radius
+        self.border_bottom_left_radius = border_bottom_left_radius
+        self.border_bottom_right_radius = border_bottom_right_radius
         self.on_left_mouse_button_clicked = on_left_mouse_button_clicked
         self.on_middle_mouse_button_clicked = on_middle_mouse_button_clicked
         self.on_right_mouse_button_clicked = on_right_mouse_button_clicked
@@ -87,6 +95,10 @@ class Button:
                       on_not_right_mouse_button_clicked = self.on_not_right_mouse_button_clicked,
                       many_actions_one_click = self.many_actions_one_click,
                       border_radius = self.border_radius,
+                      border_top_left_radius = self.border_top_left_radius,
+                      border_top_right_radius = self.border_top_right_radius,
+                      border_bottom_left_radius = self.border_bottom_left_radius,
+                      border_bottom_right_radius = self.border_bottom_right_radius,
                       image = self.image,
                       scale_img = self.scale_img,
                       img_offset = self.img_offset,
@@ -204,6 +216,22 @@ class Button:
         border_radius = kwargs.get('border_radius')
         if border_radius is not None:
             self.border_radius = border_radius
+        
+        border_top_left_radius = kwargs.get('border_top_left_radius')
+        if border_top_left_radius is not None:
+            self.border_top_left_radius = border_top_left_radius
+        
+        border_top_right_radius = kwargs.get('border_top_right_radius')
+        if border_top_right_radius is not None:
+            self.border_top_right_radius = border_top_right_radius
+        
+        border_bottom_left_radius = kwargs.get('border_bottom_left_radius')
+        if border_bottom_left_radius is not None:
+            self.border_bottom_left_radius = border_bottom_left_radius
+        
+        border_bottom_right_radius = kwargs.get('border_bottom_right_radius')
+        if border_bottom_right_radius is not None:
+            self.border_bottom_right_radius = border_bottom_right_radius
         
         img_offset = kwargs.get('img_offset')
         if img_offset is not None:
@@ -445,7 +473,7 @@ class Button:
                     call_func()
     
     def _draw(self):
-        pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius)
+        pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     

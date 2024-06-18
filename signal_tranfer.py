@@ -73,8 +73,8 @@ class Node(SignalTransporter):
     
     def copy(self):
         return Node(self.screen,
-                    self.pos,
-                    self.size,
+                    self.node_button.rect.topleft,
+                    self.node_button.rect.size,
                     self.color_on,
                     self.color_off,
                     self.is_input,
@@ -246,6 +246,25 @@ class Wire(SignalTransporter):
                     self.color_on,
                     self.color_off,
                     self.delete_func)
+    
+    def configure(self, **kwargs):
+        super().configure(**kwargs)
+        
+        init_starting_pos = kwargs.get('init_starting_pos')
+        if init_starting_pos is not None:
+            self.breakpoints[0][0] = init_starting_pos
+        
+        init_ending_pos = kwargs.get('init_ending_pos')
+        if init_ending_pos is not None:
+            self.breakpoints[0][1] = init_ending_pos
+        
+        width = kwargs.get('width')
+        if width is not None:
+            self.width = width
+        
+        delete_func = kwargs.get('delete_func')
+        if delete_func is not None:
+            self.delete_func = delete_func
     
     def get_move_buttons(self):
         return [button for _, button in self.wire_move_buttons]
