@@ -2,9 +2,9 @@ import math
 import time
 import pygame
 from settings import *
+from logic_gates import *
 from typing import Callable
 from widgets import Button, ScrollableSurface
-from logic_gates import AndGate, NotGate, GateBaseClass
 from signal_tranfer import Node, Wire
 from pygame_textinput import TextInputManager, TextInputVisualizer
 
@@ -55,7 +55,13 @@ class CustomGate:
         self.add_gate_button = Button(self.screen, (0, 0), (100, 20), self.button_colors, image=self.edit_button_font.render('Make Gate', True, self.button_text_colors), border_radius=10, on_left_mouse_button_clicked=self.make_gate)
         self.add_gate_button.set_pos(topright=(self.screen.get_width() - self.button_border_offset, self.button_border_offset))
         
-        self.gate_options: list[GateBaseClass] = [AndGate(self.screen, (0, 0), lambda node: self.circuit.on_node_clicked(node)), NotGate(self.screen, (0, 0), lambda node: self.circuit.on_node_clicked(node))]
+        self.constant_gate_options = [AndGate(self.screen, (0, 0), lambda node: self.circuit.on_node_clicked(node)),
+                                      NotGate(self.screen, (0, 0), lambda node: self.circuit.on_node_clicked(node)),
+                                      TimerGate(self.screen, (0, 0), lambda node: self.circuit.on_node_clicked(node))]
+        
+        self.gate_options: list[GateBaseClass] = []
+        self.gate_options += self.constant_gate_options
+        
         self.gate_circuits = []
         self.display_gate_buttons_list: list[Button] = []
         
@@ -63,18 +69,19 @@ class CustomGate:
         self.input_node_objects = []
         
         self.gate_display_spacing = 5
+        
         max_height = max(gate_op.button.rect.height for gate_op in self.gate_options) + self.border_offset
         gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
-        gates_surf_width = sum([gate.get_rect().width for gate in self.gate_options]) + (self.gate_display_spacing * (len(self.gate_options) - 1))
+        gates_surf_width = sum([(gate.get_rect().width + self.gate_display_spacing) for gate in self.gate_options]) + self.gate_display_spacing
         self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]), pygame.SRCALPHA)
         
-        width = 0
+        x = 0
         for index, gate_op in enumerate(self.gate_options):
             gate_op.button.configure(on_right_mouse_button_clicked=self.circuit.make_remove_gate_func(index))
             display_gate = gate_op.copy()
-            display_gate.configure(screen=self.gates_surf, pos=(width, (self.gates_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
+            display_gate.configure(screen=self.gates_surf, pos=(x, (self.gates_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
             
-            width += self.gate_display_spacing + display_gate.get_rect().width
+            x += display_gate.get_rect().width + self.gate_display_spacing
             
             dsp_but = display_gate.button.copy()
             dsp_but.configure(many_actions_one_click=False, render=False)
@@ -318,8 +325,8 @@ class CustomGate:
     def _recompile_gate_option_viewer(self):
         self.display_gate_buttons_list.clear()
         
-        initial_options = self.gate_options[:2]
-        custom_options = self.gate_options[2:]
+        initial_options = self.gate_options[:len(self.constant_gate_options)]
+        custom_options = self.gate_options[len(self.constant_gate_options):]
         
         max_height = max(gate_op.button.rect.height for gate_op in initial_options) + self.border_offset
         gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
@@ -421,14 +428,14 @@ class CustomGate:
         self.gate_option_viewer.update()
         
         self.update_textinput()
-        print(self.display_gate_buttons_list)
+        
         for index, button in enumerate(self.display_gate_buttons_list):
             m_pos = (self.mouse_pos[0] - self.gate_option_viewer.blit_rect.x - self.gate_option_viewer.sub_surf_rect.x,
                          self.mouse_pos[1] - self.gate_option_viewer.blit_rect.y - self.gate_option_viewer.sub_surf_rect.y)
-            # print('gate', len(self.gate_options), len(self.display_gate_buttons_list), index)
+            
             gate = self.gate_options[index]
             button.configure(mouse_pos=m_pos, on_left_mouse_button_clicked=self.circuit.make_add_gate_func(gate))
-            if index > 1:
+            if index > len(self.constant_gate_options) - 1:
                 button.configure(on_middle_mouse_button_clicked=self.make_set_circuit_editor_func(index), on_right_mouse_button_clicked=self._make_remove_gate_option_func(gate))
             button.update()
         

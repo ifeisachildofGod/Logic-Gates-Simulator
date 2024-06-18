@@ -1,4 +1,5 @@
 
+import time
 from typing import Callable
 import pygame
 import pygame.draw_py
@@ -43,7 +44,7 @@ class GateBaseClass:
         self.input_nodes_state_tracker = []
         
         self.input_nodes = [Node(self.screen,
-                                 self.pos[0], self._get_node_y_pos(self.input_amt, ni),
+                                 (self.pos[0], self._get_node_y_pos(self.input_amt, ni)),
                                  self.node_size,
                                  color_on=self.node_on_color,
                                  color_off=self.node_off_color,
@@ -54,7 +55,7 @@ class GateBaseClass:
                                  on_click_func=self.node_on_click_func) for ni in range(self.input_amt)]
 
         self.button = Button(self.screen,
-                             (self.input_nodes[0].node_button.rect.right + self.node_pin_size[0], pos[1]),
+                             ((self.input_nodes[0].node_button.rect.right + self.node_pin_size[0]) if self.input_nodes else self.pos[0], self.pos[1]),
                              self.button_size,
                              self.gate_color,
                              hover=False,
@@ -76,10 +77,16 @@ class GateBaseClass:
                                   on_click_func=self.node_on_click_func) for no in range(self.output_amt)]
     
     def get_rect(self):
-        x = self.input_nodes[0].node_button.rect.left
-        y = min(self.input_nodes[0].node_button.rect.top, self.button.rect.top)
-        width = self.output_nodes[0].node_button.rect.right - x
-        height = max(self.button.rect.height, self.button.rect.bottom - y, max(self.input_nodes[-1].node_button.rect.bottom, self.output_nodes[-1].node_button.rect.bottom) - y)
+        if self.input_nodes:
+            x = (self.input_nodes[0].node_button.rect.left) if self.input_nodes else self.button.rect.left
+            y = min(self.input_nodes[0].node_button.rect.top, self.button.rect.top) if self.input_nodes else self.button.rect.top
+            width = self.output_nodes[0].node_button.rect.right - x
+            height = max(self.button.rect.height, self.button.rect.bottom - y, max(self.input_nodes[-1].node_button.rect.bottom, self.output_nodes[-1].node_button.rect.bottom) - y)
+        else:
+            x = self.button.rect.left
+            y = self.button.rect.top
+            width = self.output_nodes[0].node_button.rect.right - x
+            height = max(self.button.rect.height, self.button.rect.bottom - y, self.output_nodes[-1].node_button.rect.bottom - y)
         
         return pygame.Rect(x, y, width, height)
     
@@ -228,7 +235,7 @@ class GateBaseClass:
         self.draw()
         self.button.update()
         self.button.configure(render=self.render)
-        
+
         self.mouse_pos = pygame.mouse.get_pos()
         self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
 
@@ -240,7 +247,10 @@ class NotGate(GateBaseClass):
     def __init__(self, screen, pos, on_click_func) -> None:
         super().__init__('Not', screen, pos, 1, 1, lambda inputs: [not inputs[0]], on_click_func)
 
-# class TimeGate(GateBaseClass):
-#     def __init__(self, screen, pos, on_click_func) -> None:
-#         super().__init__('Timer', screen, pos, 1, 1, lambda inputs: [not inputs[0]], on_click_func)
-
+class TimerGate(GateBaseClass):
+    def __init__(self, screen, pos, on_click_func) -> None:
+        super().__init__('Timer', screen, pos, 0, 1, self._logic_func, on_click_func)
+    
+    def _logic_func(self, inputs):
+        t = [int(time.time()) % 2]
+        return t
