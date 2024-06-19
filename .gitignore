@@ -52,8 +52,13 @@ pygame-*.log
 *.tmp
 
 # Project-specific
+logos/
+screenshots/
 themes.json
 
 # Miscellaneous
 .DS_Store
 Thumbs.db
+
+
+

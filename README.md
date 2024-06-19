@@ -62,6 +62,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - Email: nwufoife@gmail.com
 - GitHub: [ifeisachildofGod](https://github.com/ifeisachildofGod)
 
+## Screenshots
+![Pic-1](screenshots/screenshot%201.png)
+![Pic-2](screenshots/screenshot%202.png)
+![Pic-2](screenshots/screenshot%203.png)
+
 ## Directory Structure
 
 ```plaintext

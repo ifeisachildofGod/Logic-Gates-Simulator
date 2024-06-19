@@ -14,14 +14,16 @@ class App:
     def __init__(self) -> None:
         pygame.init()
         self.screen = pygame.display.set_mode((SCR_WIDTH, SCR_HEIGHT))
-        pygame.display.set_caption('IFEs Logic Circuit Sim')
+        logo = pygame.image.load('logos/logo.png')
+        pygame.display.set_icon(logo)
+        pygame.display.set_caption('IFEs Logic Gate Simulator')
         self.clock = pygame.time.Clock()
         self.BG_COLOR = 'black'
         
-        self.max_circuit_amt = 300
-        
         with open('themes.json') as file:
             self.bg_colors = json.loads(file.read())
+        
+        self.max_circuit_amt = len(self.bg_colors)
         
         # self.bg_colors = [(255 * random.uniform(0, 1), 255 * random.uniform(0, 1), 255 * random.uniform(0, 1)) for _ in range(self.max_circuit_amt)]
         # with open('themes.json', "w") as file:
