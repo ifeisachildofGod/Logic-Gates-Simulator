@@ -27,7 +27,7 @@ class App:
         # with open('themes.json', "w") as file:
         #     file.write(json.dumps({index: color for index, color in enumerate(self.bg_colors)}, indent=2))
         
-        self.BG_COLOR = self.bg_colors[0]
+        self.BG_COLOR = self.bg_colors['0']
         
         self.events = pygame.event.get()
         
@@ -198,7 +198,7 @@ class App:
                 break
         else:
             self.edit_index = None
-        self.BG_COLOR = self.bg_colors[self.circuit_index]
+        self.BG_COLOR = self.bg_colors[str(self.circuit_index)]
         self._recolor_widgets(self._set_color(self.BG_COLOR, 200))
     
     def _is_clicked(self,
