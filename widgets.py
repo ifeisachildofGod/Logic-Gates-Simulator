@@ -619,3 +619,163 @@ class ScrollableSurface:
             self.scroll_wheel_y.configure(size=(self.scroll_wheel_size, sw_y_height))
             self.scroll_wheel_y.update()
 
+class ListView:
+    def __init__(self, screen, pos, width, option_height, button_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
+        self.screen = screen
+        self.pos = pos
+        self.width = width
+        self.button_color = button_color
+        self.x_border_offset = x_border_offset
+        self.y_border_offset = y_border_offset
+        self.option_height = option_height
+        self.spacing = spacing
+        self.options = options
+        self.orientation = orientation
+        self.buttons: list[Button] = []
+
+        self.font = pygame.font.SysFont('Arial', int(self.option_height))
+        
+        self.orientation_is_vertical = self.orientation == 'vertical'
+        
+        self.bg_width = (self.width + (self.x_border_offset * 2)) if self.orientation_is_vertical else ((len(self.options) * (self.width + self.spacing)) + (self.x_border_offset * 2))
+        self.bg_height = ((len(self.options) * (self.option_height + self.spacing)) + (self.y_border_offset * 2)) if self.orientation_is_vertical else (self.option_height + (self.y_border_offset * 2))
+        
+        self._compile_menu()
+    
+    def configure(self, **kwargs):
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+            for button in self.buttons:
+                button.configure(screen=self.screen)
+        
+        x_border_offset = kwargs.get('x_border_offset')
+        if x_border_offset is not None:
+            self.x_border_offset = x_border_offset
+            for index, button in enumerate(self.buttons):
+                button.set_pos(topleft=self._get_pos(index))
+        
+        y_border_offset = kwargs.get('y_border_offset')
+        if y_border_offset is not None:
+            self.y_border_offset = y_border_offset
+            for index, button in enumerate(self.buttons):
+                button.set_pos(topleft=self._get_pos(index))
+        
+        pos = kwargs.get('pos')
+        if pos is not None:
+            self.pos = pos
+            for index, button in enumerate(self.buttons):
+                button.set_pos(topleft=self._get_pos(index))
+        
+        width = kwargs.get('width')
+        if width is not None:
+            self.width = width
+            for index, button in enumerate(self.buttons):
+                button.configure(size=(self.width, button.rect.height))
+                button.set_pos(topleft=self._get_pos(index))
+        
+        option_height = kwargs.get('option_height')
+        if option_height is not None:
+            self.option_height = option_height
+            for index, button in enumerate(self.buttons):
+                button.configure(size=(self.width, button.rect.height))
+                button.set_pos(topleft=self._get_pos(index))
+        
+        button_color = kwargs.get('button_color')
+        if button_color is not None:
+            self.button_color = button_color
+            for button in self.buttons:
+                button.configure(bg_color=self.button_color)
+        
+        options = kwargs.get('options')
+        if options is not None:
+            self.options = options
+            self.buttons.clear()
+            self._compile_menu()
+    
+    def _compile_menu(self):
+        for index, (name, func) in enumerate(self.options.items()):
+            button = Button(self.screen,
+                            self._get_pos(index),
+                            (self.width, self.option_height),
+                            self.button_color,
+                            image=self.font.render(name, True, 'white'),
+                            on_left_mouse_button_clicked=func)
+            self.buttons.append(button)
+    
+    def _get_pos(self, index):
+        pos = self.pos[0] + self.x_border_offset, (self.pos[1] + self.y_border_offset) + (index * (self.option_height + self.spacing))
+        if not self.orientation_is_vertical:
+            pos = (self.pos[0] + self.x_border_offset) + (index * (self.width + self.spacing)), self.pos[1] + self.y_border_offset
+        return pos
+    
+    def update(self):
+        pygame.draw.rect(self.screen, 'black', (*self.pos, self.bg_width, self.bg_height))
+        for button in self.buttons:
+            button.update()
+
+class MenuBar:
+    def __init__(self, screen, y_pos, menu_width, height, button_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
+        self.screen = screen
+        
+        
+        self.y_pos = y_pos
+        self.menu_width = menu_width
+        self.height = height
+        self.button_color = button_color
+        self.bg_color = bg_color
+        self.x_border_offset = x_border_offset
+        self.y_border_offset = y_border_offset
+        self.menu_spacing = menu_spacing
+        self.options = options
+        self.dropdown_index = -1
+        
+        self.menu_option_buttons: list[Button] = []
+        self.menu_option_dropdowns: list[ListView] = []
+
+        self.font = pygame.font.SysFont('Arial', int(self.height))
+        
+        self._compile_menus()
+    
+    def _compile_menus(self):
+        for index, (menu_name, menu_options) in enumerate(self.options.items()):
+            button = Button(self.screen, (self.x_border_offset + (index * (self.menu_width + self.menu_spacing)), self.y_border_offset + self.y_pos), (self.menu_width, self.height), self.button_color, image=self.font.render(menu_name, True, 'white'), on_hover=self._get_menu_opt_hover_func(index), on_left_mouse_button_clicked=self._get_menu_button_func(index))
+            dropdown = ListView(self.screen, button.rect.bottomleft, self.menu_width, self.height, self.button_color, self.menu_spacing, self.x_border_offset, self.y_border_offset, menu_options)
+            
+            self.menu_option_buttons.append(button)
+            self.menu_option_dropdowns.append(dropdown)
+    
+    def _get_menu_opt_hover_func(self, index):
+        def func():
+            if self.dropdown_index != -1:
+                self.dropdown_index = index
+        
+        return func
+    
+    def _get_menu_button_func(self, index):
+        def func():
+            if self.dropdown_index == -1 or self.dropdown_index != index:
+                self.dropdown_index = index
+            else:
+                self.dropdown_index = -1
+        
+        return func
+    
+    def update(self):
+        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.height + (self.y_border_offset * 2)))
+
+        buttons_clicked = []
+        for button in self.menu_option_buttons:
+            mouse_clicked, _, _, _ = button.update()
+            buttons_clicked.append(mouse_clicked)
+        
+        if pygame.mouse.get_pressed()[0] and True not in buttons_clicked:
+            if self.dropdown_index != -1:
+                list_view = self.menu_option_dropdowns[self.dropdown_index]
+                list_view.update()
+                if not True in [button.update()[0] for button in list_view.buttons]:
+                    self.dropdown_index = -1
+        
+        if self.dropdown_index != -1:
+            self.menu_option_dropdowns[self.dropdown_index].update()
+

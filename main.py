@@ -3,7 +3,7 @@ import sys
 import pygame
 from settings import SCR_WIDTH, SCR_HEIGHT, FPS
 from logic_circuits import GateDisplay
-
+from widgets import MenuBar
 
 class App:
     def __init__(self) -> None:
@@ -22,6 +22,23 @@ class App:
         self.BG_COLOR = self.bg_colors["0"]
         
         self.gate = GateDisplay(self.screen, 100)
+        options = {
+            "File": {
+                'New': print,
+                'Open': print,
+                'Save': print,
+                'Save As': print,
+                'Close': print,
+            },
+            "Edit": {
+                'Undo': print,
+                'Redo': print,
+                'Cut': print,
+                'Copy': print,
+                'Paste': print,
+            }
+        }
+        self.menubar = MenuBar(self.screen, 0, 50, 25, 'blue', 'black', 2, 2, 2, options)
         self.gate_circuit_index_tracker = None
         
     def _app_loop(self):
@@ -30,6 +47,7 @@ class App:
         self.screen.blit(self.fps_surf, self.fps_rect)
         
         self.gate.update(self.events)
+        self.menubar.update()
     
     def _event_loop(self, event):
         self.keys = pygame.key.get_pressed()
