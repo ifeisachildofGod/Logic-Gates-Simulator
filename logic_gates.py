@@ -167,6 +167,37 @@ class GateBaseClass:
         if mouse_pos is not None:
             self.mouse_pos = mouse_pos
         
+        node_pin_color = kwargs.get('node_pin_color')
+        if node_pin_color is not None:
+            self.node_pin_color = node_pin_color
+        
+        node_on_color = kwargs.get('node_on_color')
+        if node_on_color is not None:
+            self.node_on_color = node_on_color
+            for node in self.input_nodes:
+                node.configure(color_on=self.node_on_color)
+            for node in self.output_nodes:
+                node.configure(color_on=self.node_on_color)
+        
+        node_off_color = kwargs.get('node_off_color')
+        if node_off_color is not None:
+            self.node_off_color = node_off_color
+            for node in self.input_nodes:
+                node.configure(color_off=self.node_off_color)
+            for node in self.output_nodes:
+                node.configure(color_off=self.node_off_color)
+        
+        gate_color = kwargs.get('gate_color')
+        if gate_color is not None:
+            self.gate_color = gate_color
+            self.button.configure(bg_color=self.gate_color)
+        
+        text_color = kwargs.get('text_color')
+        if text_color is not None:
+            self.text_color = text_color
+            text_surf = self.font.render(self.name, True, self.text_color)
+            self.button.configure(image=text_surf)
+        
         node_on_click_func = kwargs.get('node_on_click_func')
         if node_on_click_func is not None:
             self.node_on_click_func = node_on_click_func
@@ -182,13 +213,16 @@ class GateBaseClass:
         self.prev_mouse_pos = dest
     
     def copy(self):
-        return GateBaseClass(name=self.name,
+        gate = GateBaseClass(name=self.name,
                              screen=self.screen,
                              pos= self.button.rect.topleft,
                              input_amt=self.input_amt,
                              output_amt=self.output_amt,
                              logic_func=self.logic_func,
                              node_on_click_func=self.node_on_click_func)
+        gate.configure(gate_color=self.gate_color, text_color=self.text_color, node_on_color=self.node_on_color, node_off_color=self.node_off_color)
+        
+        return gate
     
     def disconnect_all_nodes(self):
         for node in self.input_nodes:
