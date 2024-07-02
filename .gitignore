@@ -55,6 +55,7 @@ pygame-*.log
 logos/
 screenshots/
 themes.json
+test.py
 
 # Miscellaneous
 .DS_Store

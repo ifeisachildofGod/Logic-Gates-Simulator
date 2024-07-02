@@ -3,6 +3,7 @@ from copy import deepcopy
 from typing import Callable
 from widgets import Button
 from settings import *
+from modules import is_clicked
 
 class SignalTransporter:
     def __init__(self, screen, color_on, color_off) -> None:
@@ -71,6 +72,21 @@ class Node(SignalTransporter):
         self.connected_outputs = []
         self.connected_inputs = []
     
+    def get_dict(self):
+        return {
+            'pos': self.get_rect().topleft,
+            'size': self.get_rect().size,
+            'color_on': self.color_on,
+            'color_off': self.color_off,
+            'is_input': self.is_input,
+            'border_radius': self.border_radius,
+            'static': self.static,
+            'is_click_toogleable': self.is_click_toogleable
+        }
+    
+    def set_dict(self, d: dict):
+        self.configure(**d)
+    
     def copy(self):
         return Node(self.screen,
                     self.node_button.rect.topleft,
@@ -97,7 +113,7 @@ class Node(SignalTransporter):
         pos = kwargs.get('pos')
         if pos is not None:
             self.pos = pos
-            self.node_button.configure(pos=self.pos)
+            self.node_button.set_pos(topleft=self.pos)
         
         size = kwargs.get('size')
         if size is not None:
@@ -123,8 +139,8 @@ class Node(SignalTransporter):
             self.is_click_toogleable = is_click_toogleable
             self._update_click_func()
         
-        on_click_func = kwargs.get('on_click_func')
-        if on_click_func is not None:
+        if 'on_click_func' in kwargs:
+            on_click_func = kwargs.get('on_click_func')
             self.on_click_func = on_click_func
             self._update_click_func()
     
@@ -137,9 +153,6 @@ class Node(SignalTransporter):
                 self.on_click_func(self)
         
         self.node_button.configure(on_left_mouse_button_clicked=func)
-    
-    def set_pos(self, pos):
-        self.node_button.set_pos(topleft=pos)
     
     def connect(self, wire):
         if wire not in self.connected_outputs + self.connected_inputs:
@@ -198,20 +211,19 @@ class Node(SignalTransporter):
         self.mouse_pos = pygame.mouse.get_pos()
 
 class Wire(SignalTransporter):
-    def __init__(self, screen: pygame.Surface, init_starting_pos: list, init_ending_pos: list, width: int, color_on, color_off, delete_func: Callable) -> None:
+    def __init__(self, screen: pygame.Surface, init_starting_pos: list, init_ending_pos: list, width: int, color_on, color_off, delete_func: Callable[[SignalTransporter], None]) -> None:
         super().__init__(screen, color_on, color_off)
         self.width = width
         self.wire_move_buttons = []
         self.delete_func = delete_func
         self.curr_color = self.color_on if self.state else self.color_off
-        
-        self.breakpoints = [[init_starting_pos, init_ending_pos]]
+
+        self.first_pos_tracker = [init_starting_pos, init_ending_pos]
+        self.breakpoints = [self.first_pos_tracker]
         
         self.starting_point = self.breakpoints[0][0]
         self.ending_point = self.breakpoints[-1][1]
-        
-        self.first_pos_tracker = [init_starting_pos, init_ending_pos]
-        
+                
         self.mouse_pos = pygame.mouse.get_pos()
         self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
         
@@ -220,23 +232,23 @@ class Wire(SignalTransporter):
         
         self.input_connected = False
         self.output_connected = False
-        
-        self.left_mouse_clicked_dict = {}
-        self.left_mouse_clicked_outside_dict = {}
-        self.middle_mouse_clicked_dict = {}
-        self.middle_mouse_clicked_outside_dict = {}
-        self.right_mouse_clicked_dict = {}
-        self.right_mouse_clicked_outside_dict = {}
-        
-        self.left_mouse_tracker_clicked_dict = {}
-        self.left_mouse_tracker_not_clicked_dict = {}
-        self.middle_mouse_tracker_clicked_dict = {}
-        self.middle_mouse_tracker_not_clicked_dict = {}
-        self.right_mouse_tracker_clicked_dict = {}
-        self.right_mouse_tracker_not_clicked_dict = {}
-        
-        self.hover_tracker_dict = {}
-        self.not_hover_tracker_dict = {}
+    
+    def get_dict(self):
+        return {
+            'breakpoints': self.breakpoints,
+            'first_pos_tracker': self.first_pos_tracker,
+            'width': self.width,
+            'color_on': self.color_on,
+            'color_off': self.color_off,
+        }
+    
+    def set_dict(self, d: dict):
+        self.breakpoints = [d.pop('first_pos_tracker')]
+        self.wire_move_buttons.clear()
+        b_p = d.pop('breakpoints')
+        for _, end in b_p:
+            self.add_breakpoint(end)
+        self.configure(**d)
     
     def copy(self):
         return Wire(self.screen,
@@ -293,147 +305,6 @@ class Wire(SignalTransporter):
         for i, (_, button) in enumerate(self.wire_move_buttons):
             self.wire_move_buttons[i][0] = i
             self.wire_move_buttons[i][1].configure(on_right_mouse_button_clicked=self.remove_breakpoint(i), on_left_mouse_button_clicked=self._move_breakpoint(i, button))
-    
-    def is_clicked(self,
-                   mouse_rect: pygame.Rect,
-                   line_target: list[list[int, int], list[int, int]] | pygame.Rect,
-                   hover_func: Callable = None,
-                   not_hover_func: Callable = None,
-                   on_left_clicked_func: Callable = None,
-                   on_middle_clicked_func: Callable = None,
-                   on_right_clicked_func: Callable = None,
-                   on_not_left_clicked_func: Callable = None,
-                   on_not_middle_clicked_func: Callable = None,
-                   on_not_right_clicked_func: Callable = None,
-                   left_many_actions_one_click: bool = False,
-                   left_many_actions_one_not_click: bool = False,
-                   middle_many_actions_one_click: bool = False,
-                   middle_many_actions_one_not_click: bool = False,
-                   right_many_actions_one_click: bool = False,
-                   right_many_actions_one_not_click: bool = False,
-                   hover_many_actions_one_click: bool = False,
-                   not_hover_many_actions_one_click: bool = False):
-        
-        left_mouse_clicked, middle_mouse_clicked, right_mouse_clicked = pygame.mouse.get_pressed()
-        mouse_collission = True if len(mouse_rect.clipline(line_target)) else False
-        
-        line_target_key = repr(line_target)
-        
-        if line_target_key not in self.left_mouse_clicked_dict:
-            self.left_mouse_clicked_dict[line_target_key] = False
-        if line_target_key not in self.left_mouse_clicked_outside_dict:
-            self.left_mouse_clicked_outside_dict[line_target_key] = False
-        if line_target_key not in self.middle_mouse_clicked_dict:
-            self.middle_mouse_clicked_dict[line_target_key] = False
-        if line_target_key not in self.middle_mouse_clicked_outside_dict:
-            self.middle_mouse_clicked_outside_dict[line_target_key] = False
-        if line_target_key not in self.right_mouse_clicked_dict:
-            self.right_mouse_clicked_dict[line_target_key] = False
-        if line_target_key not in self.right_mouse_clicked_outside_dict:
-            self.right_mouse_clicked_outside_dict[line_target_key] = False
-        
-        if line_target_key not in self.left_mouse_tracker_clicked_dict:
-            self.left_mouse_tracker_clicked_dict[line_target_key] = False
-        if line_target_key not in self.left_mouse_tracker_not_clicked_dict:
-            self.left_mouse_tracker_not_clicked_dict[line_target_key] = False
-        if line_target_key not in self.middle_mouse_tracker_clicked_dict:
-            self.middle_mouse_tracker_clicked_dict[line_target_key] = False
-        if line_target_key not in self.middle_mouse_tracker_not_clicked_dict:
-            self.middle_mouse_tracker_not_clicked_dict[line_target_key] = False
-        if line_target_key not in self.right_mouse_tracker_clicked_dict:
-            self.right_mouse_tracker_clicked_dict[line_target_key] = False
-        if line_target_key not in self.right_mouse_tracker_not_clicked_dict:
-            self.right_mouse_tracker_not_clicked_dict[line_target_key] = False
-        
-        if line_target_key not in self.hover_tracker_dict:
-            self.hover_tracker_dict[line_target_key] = False
-        if line_target_key not in self.not_hover_tracker_dict:
-            self.not_hover_tracker_dict[line_target_key] = False
-        
-        if mouse_collission:
-            self.not_hover_tracker_dict[line_target_key] = False
-            if not self.hover_tracker_dict[line_target_key] or hover_many_actions_one_click:
-                if hover_func is not None:
-                    hover_func()
-                self.hover_tracker_dict[line_target_key] = True
-        else:
-            self.hover_tracker_dict[line_target_key] = False
-            if not self.not_hover_tracker_dict[line_target_key] or not_hover_many_actions_one_click:
-                if not_hover_func is not None:
-                    not_hover_func()
-                self.not_hover_tracker_dict[line_target_key] = True
-        
-        if left_mouse_clicked and mouse_collission:
-            self.left_mouse_clicked_dict[line_target_key] = True
-        if not left_mouse_clicked:
-            self.left_mouse_clicked_dict[line_target_key] = False
-        if not self.left_mouse_clicked_dict[line_target_key] and not mouse_collission:
-            self.left_mouse_clicked_outside_dict[line_target_key] = False
-        if not left_mouse_clicked:
-            self.left_mouse_clicked_outside_dict[line_target_key] = True
-        
-        if middle_mouse_clicked and mouse_collission:
-            self.middle_mouse_clicked_dict[line_target_key] = True
-        if not middle_mouse_clicked:
-            self.middle_mouse_clicked_dict[line_target_key] = False
-        if not self.middle_mouse_clicked_dict[line_target_key] and not mouse_collission:
-            self.middle_mouse_clicked_outside_dict[line_target_key] = False
-        if not middle_mouse_clicked:
-            self.middle_mouse_clicked_outside_dict[line_target_key] = True
-        
-        if right_mouse_clicked and mouse_collission:
-            self.right_mouse_clicked_dict[line_target_key] = True
-        if not right_mouse_clicked:
-            self.right_mouse_clicked_dict[line_target_key] = False
-        if not self.right_mouse_clicked_dict[line_target_key] and not mouse_collission:
-            self.right_mouse_clicked_outside_dict[line_target_key] = False
-        if not right_mouse_clicked:
-            self.right_mouse_clicked_outside_dict[line_target_key] = True
-        
-        left_mouse_clicked = self.left_mouse_clicked_dict[line_target_key] and self.left_mouse_clicked_outside_dict[line_target_key]
-        middle_mouse_clicked = self.middle_mouse_clicked_dict[line_target_key] and self.middle_mouse_clicked_outside_dict[line_target_key]
-        right_mouse_clicked = self.right_mouse_clicked_dict[line_target_key] and self.right_mouse_clicked_outside_dict[line_target_key]
-        
-        if left_mouse_clicked:
-            self.left_mouse_tracker_not_clicked_dict[line_target_key] = False
-            if not self.left_mouse_tracker_clicked_dict[line_target_key] or left_many_actions_one_click:
-                if on_left_clicked_func is not None:
-                    on_left_clicked_func()
-                self.left_mouse_tracker_clicked_dict[line_target_key] = True
-        else:
-            self.left_mouse_tracker_clicked_dict[line_target_key] = False
-            if not self.left_mouse_tracker_not_clicked_dict[line_target_key] or left_many_actions_one_not_click:
-                if on_not_left_clicked_func is not None:
-                    on_not_left_clicked_func()
-                self.left_mouse_tracker_not_clicked_dict[line_target_key] = True
-        
-        if middle_mouse_clicked:
-            self.middle_mouse_tracker_not_clicked_dict[line_target_key] = False
-            if not self.middle_mouse_tracker_clicked_dict[line_target_key] or middle_many_actions_one_click:
-                if on_middle_clicked_func is not None:
-                    on_middle_clicked_func()
-                self.middle_mouse_tracker_clicked_dict[line_target_key] = True
-        else:
-            self.middle_mouse_tracker_clicked_dict[line_target_key] = False
-            if not self.middle_mouse_tracker_not_clicked_dict[line_target_key] or middle_many_actions_one_not_click:
-                if on_not_middle_clicked_func is not None:
-                    on_not_middle_clicked_func()
-                self.middle_mouse_tracker_not_clicked_dict[line_target_key] = True
-        
-        if right_mouse_clicked:
-            self.right_mouse_tracker_not_clicked_dict[line_target_key] = False
-            if not self.right_mouse_tracker_clicked_dict[line_target_key] or right_many_actions_one_click:
-                if on_right_clicked_func is not None:
-                    on_right_clicked_func()
-                self.right_mouse_tracker_clicked_dict[line_target_key] = True
-        else:
-            self.right_mouse_tracker_clicked_dict[line_target_key] = False
-            if not self.right_mouse_tracker_not_clicked_dict[line_target_key] or right_many_actions_one_not_click:
-                if on_not_right_clicked_func is not None:
-                    on_not_right_clicked_func()
-                self.right_mouse_tracker_not_clicked_dict[line_target_key] = True
-        
-        return left_mouse_clicked, middle_mouse_clicked, right_mouse_clicked, mouse_collission
     
     def move_breakpoint_starting_point(self, index: int, pos: list):
         index = len(self.breakpoints) - 1 if index == -1 else index
@@ -522,10 +393,10 @@ class Wire(SignalTransporter):
         for starting_point, stopping_point in self.breakpoints:
             line_pos = (tuple(starting_point), tuple(stopping_point))
             
-            self.is_clicked(mouse_rect,
-                            line_pos,
-                            on_middle_clicked_func=lambda: self.break_line((starting_point, stopping_point)),
-                            on_right_clicked_func=lambda: self.delete_func(self))
+            is_clicked(mouse_rect,
+                       line_pos,
+                       on_middle_clicked_func=lambda: self.break_line((starting_point, stopping_point)),
+                       on_right_clicked_func=lambda: self.delete_func(self))
             if self.render:
                 pygame.draw.line(self.screen, self.curr_color, starting_point, stopping_point, self.width)
     

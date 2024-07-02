@@ -1,5 +1,6 @@
 import pygame
 from typing import Callable, Literal
+from modules import set_color
 
 class Button:
     def __init__(self,
@@ -69,8 +70,7 @@ class Button:
         self.middle_mouse_clicked_outside = True
         self.right_mouse_clicked_outside = True
         
-        self.curr_button_opacity = 255
-        self.SCR_WIDTH, self.SCR_HEIGHT = self.screen.get_size()
+        self.button_opacity = 255
         
         self.rect = pygame.Rect(*self.pos, *self.size)
         
@@ -80,6 +80,38 @@ class Button:
             self.img_rect = self.image_surf.get_rect(center=self.rect.center)
         else:
             self.image_surf = None
+            self.img_rect = None
+    
+    def get_dict(self):
+        d= dict(# screen = self.screen,
+                pos = self.pos,
+                size = self.size,
+                hover=self.hover,
+                bg_color = self.bg_color,
+                on_hover = self.on_hover,
+                on_not_hover = self.on_not_hover,
+                # on_left_mouse_button_clicked = self.on_left_mouse_button_clicked,
+                # on_right_mouse_button_clicked = self.on_right_mouse_button_clicked,
+                # on_not_left_mouse_button_clicked = self.on_not_left_mouse_button_clicked,
+                # on_not_right_mouse_button_clicked = self.on_not_right_mouse_button_clicked,
+                many_actions_one_click = self.many_actions_one_click,
+                border_radius = self.border_radius,
+                border_top_left_radius = self.border_top_left_radius,
+                border_top_right_radius = self.border_top_right_radius,
+                border_bottom_left_radius = self.border_bottom_left_radius,
+                border_bottom_right_radius = self.border_bottom_right_radius,
+                # image = self.image,
+                scale_img = self.scale_img,
+                img_offset = self.img_offset,
+                render = self.render)
+        
+        return d
+    
+    def set_dict(self, d: dict):
+        pos = d.pop('pos')
+        self.set_pos(topleft=pos)
+        
+        self.configure(**d)
     
     def copy(self):
         return Button(screen = self.screen,
@@ -233,12 +265,6 @@ class Button:
         if border_bottom_right_radius is not None:
             self.border_bottom_right_radius = border_bottom_right_radius
         
-        img_offset = kwargs.get('img_offset')
-        if img_offset is not None:
-            self.img_offset = img_offset
-            self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-            self.img_rect = self.image_surf.get_rect(center=self.rect.center)
-        
         image = kwargs.get('image')
         if 'image' in kwargs:
             if image is not None:
@@ -248,22 +274,23 @@ class Button:
                 self.img_rect = self.image_surf.get_rect(center=self.rect.center)
             else:
                 self.image_surf = self.image = None
+                self.img_rect = None
+        
+        img_offset = kwargs.get('img_offset')
+        if img_offset is not None:
+            self.img_offset = img_offset
+            self.configure(image=self.image)
         
         scale_img = kwargs.get('scale_img')
         if scale_img is not None:
             self.scale_img = scale_img
-            if self.scale_img:
-                self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-                self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+            self.configure(image=self.image)
         
         size = kwargs.get('size')
         if size is not None:
             self.size = size
             self.rect.size = self.size
-            if self.image_surf:
-                if self.scale_img:
-                    self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-                self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+            self.configure(image=self.image)
         
         render = kwargs.get('render')
         if render is not None:
@@ -312,33 +339,6 @@ class Button:
         self.mouse_pos = pygame.mouse.get_pos()
         
         return clicked_info
-    
-    def _set_color(self, color, opacity: int):
-        assert self._is_color(color), f'"{color}" is not a valid color'
-        
-        if isinstance(color, str):
-            if '#' in color:
-                color_tuple = [(abs(255 - (col * 255)) / 255) for col in pygame.Color(color).cmy]
-            else:
-                color_tuple = [i/255 for i in pygame.colordict.THECOLORS[color]]
-        elif isinstance(color, tuple | list | pygame.color.Color):
-            color_tuple = [i/255 for i in color]
-        elif isinstance(color, int):
-            color_tuple = [i/255 for i in pygame.Color(color)]
-        else:
-            raise Exception('Invalid color argument')
-
-        for i in color_tuple[:3]:
-            black = i == 0
-            if not black:
-                break
-        
-        color = [255 - opacity for _ in color_tuple] if black else [i * opacity for i in color_tuple]
-        
-        if len(color) >= 4:
-            color = color[:3]
-        
-        return color
     
     def _is_color(self, color):
         try:
@@ -430,21 +430,21 @@ class Button:
         call_type, call_func = click_call_info
         match call_type:
             case 'on right clicked':
-                self.curr_button_opacity = self.on_click_shade_val
+                self.button_opacity = self.on_click_shade_val
                 if self.start_right_click_check:
                     if call_func is not None:
                         call_func()
                     self.start_right_click_check = False
                     self.start_right_click_check = self.start_right_click_check or many_actions_one_click
             case 'on middle clicked':
-                self.curr_button_opacity = self.on_click_shade_val
+                self.button_opacity = self.on_click_shade_val
                 if self.start_middle_click_check:
                     if call_func is not None:
                         call_func()
                     self.start_middle_click_check = False
                     self.start_middle_click_check = self.start_middle_click_check or many_actions_one_click
             case 'on left clicked':
-                self.curr_button_opacity = self.on_click_shade_val
+                self.button_opacity = self.on_click_shade_val
                 if self.start_left_click_check:
                     if call_func is not None:
                         call_func()
@@ -463,17 +463,17 @@ class Button:
                 if call_func is not None:
                     call_func()
             case 'on not hover':
-                self.curr_button_opacity = 255 if not self.disabled else 125
+                self.button_opacity = 255 if not self.disabled else 125
                 if call_func is not None:
                     call_func()
             case 'on hover':
                 if self.hover:
-                    self.curr_button_opacity = self.on_hover_shade_val
+                    self.button_opacity = self.on_hover_shade_val
                 if call_func is not None:
                     call_func()
     
     def _draw(self):
-        pygame.draw.rect(self.screen, self._set_color(self.bg_color, self.curr_button_opacity), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
+        pygame.draw.rect(self.screen, set_color(self.bg_color, self.button_opacity), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
@@ -492,7 +492,7 @@ class ScrollableSurface:
         self.blit_surf_pos = blit_surf_pos
         self.sub_surf_rect = self.sub_surf.get_rect(topleft=self.sub_surf_pos)
         
-        self.blit_surf = pygame.Surface(blit_surf_size, pygame.SRCALPHA)
+        self.blit_surf = pygame.Surface((abs(blit_surf_size[0]), abs(blit_surf_size[1])), pygame.SRCALPHA)
         self.blit_rect = self.blit_surf.get_rect(topleft=blit_surf_pos)
         
         if blit_surf_color is not None:
@@ -620,11 +620,12 @@ class ScrollableSurface:
             self.scroll_wheel_y.update()
 
 class ListView:
-    def __init__(self, screen, pos, width, option_height, button_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
+    def __init__(self, screen, pos, width, option_height, button_color, button_text_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
         self.screen = screen
         self.pos = pos
         self.width = width
         self.button_color = button_color
+        self.button_text_color = button_text_color
         self.x_border_offset = x_border_offset
         self.y_border_offset = y_border_offset
         self.option_height = option_height
@@ -678,7 +679,7 @@ class ListView:
         if option_height is not None:
             self.option_height = option_height
             for index, button in enumerate(self.buttons):
-                button.configure(size=(self.width, button.rect.height))
+                button.configure(size=(button.rect.width, self.option_height))
                 button.set_pos(topleft=self._get_pos(index))
         
         button_color = kwargs.get('button_color')
@@ -699,14 +700,16 @@ class ListView:
                             self._get_pos(index),
                             (self.width, self.option_height),
                             self.button_color,
-                            image=self.font.render(name, True, 'white'),
+                            image=self.font.render(name, True, self.button_text_color),
+                            img_offset=4,
+                            scale_img=True,
                             on_left_mouse_button_clicked=func)
             self.buttons.append(button)
     
     def _get_pos(self, index):
         pos = self.pos[0] + self.x_border_offset, (self.pos[1] + self.y_border_offset) + (index * (self.option_height + self.spacing))
         if not self.orientation_is_vertical:
-            pos = (self.pos[0] + self.x_border_offset) + (index * (self.width + self.spacing)), self.pos[1] + self.y_border_offset
+            pos = (self.pos[0] + (self.x_border_offset * 2)) + (index * (self.width + self.spacing)), self.pos[1] + self.y_border_offset
         return pos
     
     def update(self):
@@ -715,14 +718,14 @@ class ListView:
             button.update()
 
 class MenuBar:
-    def __init__(self, screen, y_pos, menu_width, height, button_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
+    def __init__(self, screen, y_pos, menu_width, height, button_color, button_text_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
         self.screen = screen
-        
-        
+                
         self.y_pos = y_pos
         self.menu_width = menu_width
         self.height = height
         self.button_color = button_color
+        self.button_text_color = button_text_color
         self.bg_color = bg_color
         self.x_border_offset = x_border_offset
         self.y_border_offset = y_border_offset
@@ -737,10 +740,61 @@ class MenuBar:
         
         self._compile_menus()
     
+    def configure(self, **kwargs):
+        screen = kwargs.get('screen')
+        if screen is not None:
+            self.screen = screen
+            for button in self.menu_option_buttons:
+                button.configure(screen=self.screen)
+            for dropdowns in self.menu_option_dropdowns:
+                dropdowns.configure(screen=self.screen)
+        
+        menu_width = kwargs.get('menu_width')
+        if menu_width is not None:
+            self.menu_width = menu_width
+            for button in self.menu_option_buttons:
+                button.configure(size=(self.menu_width, button.rect.height))
+        
+        height = kwargs.get('height')
+        if height is not None:
+            self.height = height
+            for button in self.menu_option_buttons:
+                button.configure(size=(button.rect.width, self.height))
+        
+        button_color = kwargs.get('button_color')
+        if button_color is not None:
+            self.button_color = button_color
+            for button in self.menu_option_buttons:
+                button.configure(bg_color=self.button_color)
+            for dropdowns in self.menu_option_dropdowns:
+                dropdowns.configure(button_color=self.button_color)
+        
+        options = kwargs.get('options')
+        if options is not None:
+            self.options = options
+            self.menu_option_buttons.clear()
+            self.menu_option_dropdowns.clear()
+            self._compile_menus()
+    
     def _compile_menus(self):
         for index, (menu_name, menu_options) in enumerate(self.options.items()):
-            button = Button(self.screen, (self.x_border_offset + (index * (self.menu_width + self.menu_spacing)), self.y_border_offset + self.y_pos), (self.menu_width, self.height), self.button_color, image=self.font.render(menu_name, True, 'white'), on_hover=self._get_menu_opt_hover_func(index), on_left_mouse_button_clicked=self._get_menu_button_func(index))
-            dropdown = ListView(self.screen, button.rect.bottomleft, self.menu_width, self.height, self.button_color, self.menu_spacing, self.x_border_offset, self.y_border_offset, menu_options)
+            button = Button(self.screen,
+                            (self.x_border_offset + (index * (self.menu_width + self.menu_spacing)),
+                             self.y_border_offset + self.y_pos), (self.menu_width, self.height),
+                            self.button_color,
+                            image=self.font.render(menu_name, True, self.button_text_color),
+                            on_hover=self._get_menu_opt_hover_func(index),
+                            on_left_mouse_button_clicked=self._get_menu_button_func(index))
+            dropdown = ListView(self.screen,
+                                button.rect.bottomleft,
+                                self.menu_width,
+                                self.height,
+                                self.button_color,
+                                self.button_text_color,
+                                self.menu_spacing,
+                                self.x_border_offset,
+                                self.y_border_offset,
+                                menu_options)
             
             self.menu_option_buttons.append(button)
             self.menu_option_dropdowns.append(dropdown)
