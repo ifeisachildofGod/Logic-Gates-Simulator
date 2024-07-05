@@ -38,12 +38,19 @@ class GateDisplay:
         self.edit_gate_option_button = Button(self.screen, (0, 0), (100, 20), self.button_colors, image=self.edit_button_font.render('Edit', True, self.button_text_colors), border_radius=self.border_radius, on_left_mouse_button_clicked=self._edit_circuit)
         self.edit_gate_option_button.set_pos(midtop=(self.screen.get_width() / 2, 0))
         
-        self.textinput_manager = TextInputManager(validator = lambda input: len(input) < 25)
-        self.textinput = TextInputVisualizer(manager=self.textinput_manager, font_color=(255, 255, 255), font_object=self.textinput_font)
+        def get_textinput_rect():
+            return self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, 30))
+        
+        def input_manager_validator(input):
+            self.textinput_rect = get_textinput_rect()
+            return len(input) < 25
+        
+        textinput_manager = TextInputManager(initial = DEFAULT_CIRCUIT_NAME, validator = input_manager_validator)
+        self.textinput = TextInputVisualizer(manager=textinput_manager, font_color=(255, 255, 255), font_object=self.textinput_font)
         self.textinput.cursor_width = 4
         self.textinput.cursor_color = [(c+200)%255 for c in self.textinput.font_color]
-        self.textinput.cursor_visible = True
-        self.textinput_rect = self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, self.delete_circuit_button.rect.bottom))
+        self.textinput.cursor_visible = False
+        self.textinput_rect = get_textinput_rect()
         
         self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self._change_circuit(self.circuit_index - 1), border_radius=self.border_radius)
         self.prev_circuit_button.set_pos(topleft=(0, self.delete_circuit_button.rect.bottom + 20))
@@ -256,12 +263,12 @@ class GateDisplay:
         
         initial_options = self.gate_options[:len(self.constant_gate_options)]
         custom_options = self.gate_options[len(self.constant_gate_options):].copy()
-        
+        # print('atu')
         max_height = max(gate_op.button.rect.height for gate_op in self.constant_gate_options) + self.border_offset
         gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
         gates_surf_width = sum([(gate.get_rect().width + self.gate_display_spacing) for gate in self.constant_gate_options]) + self.gate_display_spacing
         self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]), pygame.SRCALPHA)
-
+        
         width = 0
         for index, gate_op in enumerate(initial_options):
             gate_op.button.configure(on_right_mouse_button_clicked=self.circuit.make_remove_gate_func(index))
@@ -331,10 +338,11 @@ class GateDisplay:
             self.textinput.update(self.events)
             self.circuit.name = self.textinput.value
         
-        self.textinput_rect = self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, 20))
         self.screen.blit(self.textinput.surface, self.textinput_rect)
     
     def update(self, events):
+        # print('ifestart')
+        
         self.mouse_pos = pygame.mouse.get_pos()
         self.events = events
         self.keys = pygame.key.get_pressed()
@@ -363,10 +371,10 @@ class GateDisplay:
             self.gate_circuits.append(circuit)
             self.new_gate_tracker = self.circuit.gate
         
-        for gate in self.gate_options:
-            gate.configure(node_on_click_func=self.circuit.on_node_clicked)
-        
         self.gate_option_viewer.update()
+        
+        for gate in self.gate_options:
+            gate.configure(disabled=True)
         
         self._update_textinput()
         
@@ -379,7 +387,10 @@ class GateDisplay:
             if index > len(self.constant_gate_options) - 1:
                 button.configure(on_middle_mouse_button_clicked=self._make_set_circuit_editor_func(index), on_right_mouse_button_clicked=self._make_remove_gate_option_func(gate))
             button.update()
-
+        
+        # print('ifeend')
+        # print()
+        
 
 
 

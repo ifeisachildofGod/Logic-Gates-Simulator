@@ -7,7 +7,8 @@ class Button:
                  screen: pygame.Surface,
                  pos: tuple,
                  size: tuple,
-                 bg_color,
+                 bg_color = 'transparent',
+                 hover_color = None,
                  hover: bool = True,
                  on_hover: Callable = None,
                  on_not_hover: Callable = None,
@@ -18,6 +19,7 @@ class Button:
                  on_not_middle_mouse_button_clicked: Callable = None,
                  on_not_right_mouse_button_clicked: Callable = None,
                  many_actions_one_click: bool = False,
+                 img_border_offset: tuple[int, int] = (0, 0),
                  border_radius: int = 4,
                  border_top_left_radius: int = -1,
                  border_top_right_radius: int = -1,
@@ -27,20 +29,22 @@ class Button:
                  on_click_shade_val: float = 200,
                  image: pygame.Surface = None,
                  scale_img: bool = False,
-                 img_offset: int = 0,
+                 img_anchor: str = 'center',
                  render: bool = True) -> None:
         
         self.pos = pos
         self.size = size
+        self.render = render
         self.screen = screen
         self.on_hover = on_hover
         self.bg_color = bg_color
         self.scale_img = scale_img
-        self.render = render
-        self.img_offset = img_offset
+        self.img_anchor = img_anchor
+        self.hover_color = hover_color
         self.on_not_hover = on_not_hover
         self.border_radius = border_radius
         self.image_surf = self.image = image
+        self.img_border_offset = img_border_offset
         self.hover = self.orig_hover_state = hover
         self.on_hover_shade_val = on_hover_shade_val
         self.on_click_shade_val = on_click_shade_val
@@ -71,38 +75,49 @@ class Button:
         self.right_mouse_clicked_outside = True
         
         self.button_opacity = 255
+        self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
         
         self.rect = pygame.Rect(*self.pos, *self.size)
         
         if self.image is not None:
             if self.scale_img:
-                self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-            self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+                self.image_surf = pygame.transform.scale(self.image, (self.size[0] - (self.img_border_offset[0] / 2), self.size[1] - (self.img_border_offset[1] / 2)))
+            else:
+                self.image_surf = pygame.transform.scale(self.image, (self.image.get_width() - (self.img_border_offset[0] / 2), self.image.get_height() - (self.img_border_offset[1] / 2)))
+            match self.img_anchor:
+                case 'nw':
+                    self.img_rect = self.image_surf.get_rect(topleft=(self.rect.left + self.img_border_offset[0], self.rect.top + self.img_border_offset[1]))
+                case 'ne':
+                    self.img_rect = self.image_surf.get_rect(topright=(self.rect.right + self.img_border_offset[0], self.rect.top + self.img_border_offset[1]))
+                case 'sw':
+                    self.img_rect = self.image_surf.get_rect(bottomleft=(self.rect.left + self.img_border_offset[0], self.rect.bottom + self.img_border_offset[1]))
+                case 'se':
+                    self.img_rect = self.image_surf.get_rect(bottomright=(self.rect.right + self.img_border_offset[0], self.rect.bottom + self.img_border_offset[1]))
+                case 'w':
+                    self.img_rect = self.image_surf.get_rect(midleft=(self.rect.left + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
+                case 'e':
+                    self.img_rect = self.image_surf.get_rect(midright=(self.rect.right + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
+                case 'center':
+                    self.img_rect = self.image_surf.get_rect(center=(self.rect.centerx + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
         else:
             self.image_surf = None
             self.img_rect = None
     
     def get_dict(self):
-        d= dict(# screen = self.screen,
-                pos = self.pos,
+        d= dict(pos = self.pos,
                 size = self.size,
                 hover=self.hover,
                 bg_color = self.bg_color,
                 on_hover = self.on_hover,
                 on_not_hover = self.on_not_hover,
-                # on_left_mouse_button_clicked = self.on_left_mouse_button_clicked,
-                # on_right_mouse_button_clicked = self.on_right_mouse_button_clicked,
-                # on_not_left_mouse_button_clicked = self.on_not_left_mouse_button_clicked,
-                # on_not_right_mouse_button_clicked = self.on_not_right_mouse_button_clicked,
+                img_border_offset = self.img_border_offset,
                 many_actions_one_click = self.many_actions_one_click,
                 border_radius = self.border_radius,
                 border_top_left_radius = self.border_top_left_radius,
                 border_top_right_radius = self.border_top_right_radius,
                 border_bottom_left_radius = self.border_bottom_left_radius,
                 border_bottom_right_radius = self.border_bottom_right_radius,
-                # image = self.image,
                 scale_img = self.scale_img,
-                img_offset = self.img_offset,
                 render = self.render)
         
         return d
@@ -133,11 +148,12 @@ class Button:
                       border_bottom_right_radius = self.border_bottom_right_radius,
                       image = self.image,
                       scale_img = self.scale_img,
-                      img_offset = self.img_offset,
+                      img_border_offset = self.img_border_offset,
                       render = self.render)
     
-    def set_pos(self, **kwargs):
+    def _get_pos(self, rect: pygame.Rect | None = None, **kwargs):
         pos = (0, 0)
+        r = rect if rect is not None else self.rect
         if kwargs:
             args = ['topleft', 'topright',
                     'bottomleft', 'bottomright',
@@ -156,37 +172,41 @@ class Button:
                     elif a in ('y', 'top'):
                         pos = self.pos[0], dest_pos
                     elif a == 'right':
-                        pos = dest_pos - self.rect.width, self.pos[1]
+                        pos = dest_pos - r.width, self.pos[1]
                     elif a == 'bottom':
-                        pos = self.pos[0], dest_pos - self.rect.height
+                        pos = self.pos[0], dest_pos - r.height
                     elif a == 'centerx':
-                        pos = dest_pos - (self.rect.width / 2), self.pos[1]
+                        pos = dest_pos - (r.width / 2), self.pos[1]
                     elif a == 'centery':
-                        pos = self.pos[0], dest_pos - (self.rect.height / 2)
+                        pos = self.pos[0], dest_pos - (r.height / 2)
                     elif a == 'topleft':
                         pos = dest_pos
                     elif a == 'topright':
-                        pos = dest_pos[0] - self.rect.width, dest_pos[1]
+                        pos = dest_pos[0] - r.width, dest_pos[1]
                     elif a == 'bottomleft':
-                        pos = dest_pos[0], dest_pos[1] - self.rect.height
+                        pos = dest_pos[0], dest_pos[1] - r.height
                     elif a == 'bottomright':
-                        pos = dest_pos[0] - self.rect.width, dest_pos[1] - self.rect.height
+                        pos = dest_pos[0] - r.width, dest_pos[1] - r.height
                     elif a == 'midleft':
-                        pos = dest_pos[0], dest_pos[1] - (self.rect.height / 2)
+                        pos = dest_pos[0], dest_pos[1] - (r.height / 2)
                     elif a == 'midright':
-                        pos = dest_pos[0] - self.rect.width, dest_pos[1] - (self.rect.height / 2)
+                        pos = dest_pos[0] - r.width, dest_pos[1] - (r.height / 2)
                     elif a == 'midtop':
-                        pos = dest_pos[0] - (self.rect.width / 2), dest_pos[1]
+                        pos = dest_pos[0] - (r.width / 2), dest_pos[1]
                     elif a == 'midbottom':
-                        pos = dest_pos[0] - (self.rect.width / 2), dest_pos[1] - self.rect.height
+                        pos = dest_pos[0] - (r.width / 2), dest_pos[1] - r.height
                     elif a == 'center':
-                        pos = dest_pos[0] - (self.rect.width / 2), dest_pos[1] - (self.rect.height / 2)
+                        pos = dest_pos[0] - (r.width / 2), dest_pos[1] - (r.height / 2)
                     break
             if pos == None:
                 raise TypeError(f'Invalid keyword argument passed: ({tuple(kwargs)})')
+        return pos
+    
+    def set_pos(self, **kwargs):
+        pos = self._get_pos(**kwargs)
         if pos != self.pos:
             self.pos = pos
-            self._set_topleft(self.pos)
+            self._set_topleft(pos)
     
     def configure(self, **kwargs):
         screen = kwargs.get('screen')
@@ -270,15 +290,29 @@ class Button:
             if image is not None:
                 self.image_surf = self.image = image
                 if self.scale_img:
-                    self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_offset, self.size[1] - self.img_offset))
-                self.img_rect = self.image_surf.get_rect(center=self.rect.center)
+                    self.image_surf = pygame.transform.scale(self.image, (self.size[0] - self.img_border_offset, self.size[1] - self.img_border_offset))
+                match self.img_anchor:
+                    case 'nw':
+                        self.img_rect = self.image_surf.get_rect(topleft=(self.rect.left + self.img_border_offset[0], self.rect.top + self.img_border_offset[1]))
+                    case 'ne':
+                        self.img_rect = self.image_surf.get_rect(topright=(self.rect.right + self.img_border_offset[0], self.rect.top + self.img_border_offset[1]))
+                    case 'sw':
+                        self.img_rect = self.image_surf.get_rect(bottomleft=(self.rect.left + self.img_border_offset[0], self.rect.bottom + self.img_border_offset[1]))
+                    case 'se':
+                        self.img_rect = self.image_surf.get_rect(bottomright=(self.rect.right + self.img_border_offset[0], self.rect.bottom + self.img_border_offset[1]))
+                    case 'w':
+                        self.img_rect = self.image_surf.get_rect(midleft=(self.rect.left + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
+                    case 'e':
+                        self.img_rect = self.image_surf.get_rect(midright=(self.rect.right + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
+                    case 'center':
+                        self.img_rect = self.image_surf.get_rect(center=(self.rect.centerx + self.img_border_offset[0], self.rect.centery + self.img_border_offset[1]))
             else:
                 self.image_surf = self.image = None
                 self.img_rect = None
         
-        img_offset = kwargs.get('img_offset')
-        if img_offset is not None:
-            self.img_offset = img_offset
+        img_border_offset = kwargs.get('img_border_offset')
+        if img_border_offset is not None:
+            self.img_border_offset = img_border_offset
             self.configure(image=self.image)
         
         scale_img = kwargs.get('scale_img')
@@ -445,6 +479,7 @@ class Button:
                     self.start_middle_click_check = self.start_middle_click_check or many_actions_one_click
             case 'on left clicked':
                 self.button_opacity = self.on_click_shade_val
+                self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
                 if self.start_left_click_check:
                     if call_func is not None:
                         call_func()
@@ -464,16 +499,22 @@ class Button:
                     call_func()
             case 'on not hover':
                 self.button_opacity = 255 if not self.disabled else 125
+                self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
                 if call_func is not None:
                     call_func()
             case 'on hover':
                 if self.hover:
                     self.button_opacity = self.on_hover_shade_val
+                    if self.hover_color is not None:
+                        self.button_color = self.hover_color if self.hover_color != 'transparent' else None
+                    else:
+                        self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
                 if call_func is not None:
                     call_func()
     
     def _draw(self):
-        pygame.draw.rect(self.screen, set_color(self.bg_color, self.button_opacity), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
+        if self.button_color is not None:
+            pygame.draw.rect(self.screen, self.button_color, self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
@@ -620,11 +661,12 @@ class ScrollableSurface:
             self.scroll_wheel_y.update()
 
 class ListView:
-    def __init__(self, screen, pos, width, option_height, button_color, button_text_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
+    def __init__(self, screen, pos, width, option_height, button_color, button_hover_color, button_text_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
         self.screen = screen
         self.pos = pos
         self.width = width
         self.button_color = button_color
+        self.button_hover_color = button_hover_color
         self.button_text_color = button_text_color
         self.x_border_offset = x_border_offset
         self.y_border_offset = y_border_offset
@@ -700,9 +742,10 @@ class ListView:
                             self._get_pos(index),
                             (self.width, self.option_height),
                             self.button_color,
+                            hover_color=self.button_hover_color,
                             image=self.font.render(name, True, self.button_text_color),
-                            img_offset=4,
-                            scale_img=True,
+                            img_border_offset=(4, 0),
+                            img_anchor='w',
                             on_left_mouse_button_clicked=func)
             self.buttons.append(button)
     
@@ -718,13 +761,18 @@ class ListView:
             button.update()
 
 class MenuBar:
-    def __init__(self, screen, y_pos, menu_width, height, button_color, button_text_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
+    def __init__(self, screen, y_pos, button_width, button_height, dropdown_button_width, dropdown_button_height, button_color, button_hover_color, dropdown_button_color, dropdown_button_hover_color, button_text_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
         self.screen = screen
                 
         self.y_pos = y_pos
-        self.menu_width = menu_width
-        self.height = height
+        self.button_width = button_width
+        self.button_height = button_height
         self.button_color = button_color
+        self.button_hover_color = button_hover_color
+        self.dropdown_button_width = dropdown_button_width
+        self.dropdown_button_height = dropdown_button_height
+        self.dropdown_button_color = dropdown_button_color
+        self.dropdown_button_hover_color = dropdown_button_hover_color
         self.button_text_color = button_text_color
         self.bg_color = bg_color
         self.x_border_offset = x_border_offset
@@ -736,7 +784,7 @@ class MenuBar:
         self.menu_option_buttons: list[Button] = []
         self.menu_option_dropdowns: list[ListView] = []
 
-        self.font = pygame.font.SysFont('Arial', int(self.height))
+        self.font = pygame.font.SysFont('Arial', int(self.dropdown_button_height))
         
         self._compile_menus()
     
@@ -749,25 +797,41 @@ class MenuBar:
             for dropdowns in self.menu_option_dropdowns:
                 dropdowns.configure(screen=self.screen)
         
-        menu_width = kwargs.get('menu_width')
-        if menu_width is not None:
-            self.menu_width = menu_width
+        button_width = kwargs.get('button_width')
+        if button_width is not None:
+            self.button_width = button_width
             for button in self.menu_option_buttons:
-                button.configure(size=(self.menu_width, button.rect.height))
+                button.configure(size=(self.button_width, button.rect.height))
         
-        height = kwargs.get('height')
-        if height is not None:
-            self.height = height
+        button_height = kwargs.get('button_height')
+        if button_height is not None:
+            self.button_height = button_height
             for button in self.menu_option_buttons:
-                button.configure(size=(button.rect.width, self.height))
+                button.configure(size=(button.rect.width, self.button_height))
+        
+        dropdown_button_width = kwargs.get('dropdown_button_width')
+        if dropdown_button_width is not None:
+            self.dropdown_button_width = dropdown_button_width
+            for dps in self.menu_option_dropdowns:
+                dps.configure(option_width=self.dropdown_button_width)
+        
+        dropdown_button_height = kwargs.get('dropdown_button_height')
+        if dropdown_button_height is not None:
+            self.dropdown_button_height = dropdown_button_height
+            for dps in self.menu_option_dropdowns:
+                dps.configure(height=self.dropdown_button_height)
         
         button_color = kwargs.get('button_color')
         if button_color is not None:
             self.button_color = button_color
             for button in self.menu_option_buttons:
                 button.configure(bg_color=self.button_color)
+        
+        dropdown_button_color = kwargs.get('dropdown_button_color')
+        if dropdown_button_color is not None:
+            self.dropdown_button_color = dropdown_button_color
             for dropdowns in self.menu_option_dropdowns:
-                dropdowns.configure(button_color=self.button_color)
+                dropdowns.configure(button_color=self.dropdown_button_color)
         
         options = kwargs.get('options')
         if options is not None:
@@ -779,17 +843,19 @@ class MenuBar:
     def _compile_menus(self):
         for index, (menu_name, menu_options) in enumerate(self.options.items()):
             button = Button(self.screen,
-                            (self.x_border_offset + (index * (self.menu_width + self.menu_spacing)),
-                             self.y_border_offset + self.y_pos), (self.menu_width, self.height),
-                            self.button_color,
+                            (self.x_border_offset + (index * (self.dropdown_button_width + self.menu_spacing)),
+                             self.y_border_offset + self.y_pos), (self.dropdown_button_width, self.dropdown_button_height),
+                            self.dropdown_button_color,
+                            hover_color=self.button_hover_color,
                             image=self.font.render(menu_name, True, self.button_text_color),
                             on_hover=self._get_menu_opt_hover_func(index),
                             on_left_mouse_button_clicked=self._get_menu_button_func(index))
             dropdown = ListView(self.screen,
                                 button.rect.bottomleft,
-                                self.menu_width,
-                                self.height,
-                                self.button_color,
+                                self.dropdown_button_width,
+                                self.dropdown_button_height,
+                                self.dropdown_button_color,
+                                self.dropdown_button_hover_color,
                                 self.button_text_color,
                                 self.menu_spacing,
                                 self.x_border_offset,
@@ -816,7 +882,7 @@ class MenuBar:
         return func
     
     def update(self):
-        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.height + (self.y_border_offset * 2)))
+        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.dropdown_button_height + (self.y_border_offset * 2)))
 
         buttons_clicked = []
         for button in self.menu_option_buttons:

@@ -10,7 +10,7 @@ from signal_tranfer import Node
 from signal_tranfer import Node, Wire
 
 class GateBaseClass:
-    def __init__(self, name: str, screen: pygame.Surface, pos: tuple, input_amt, output_amt, logic_func_or_circuit_or_circuit_dict: Callable[[list], list], node_on_click_func: Callable[[Node], None] = None, node_on_color = 'pink', node_off_color = 'grey') -> None:
+    def __init__(self, name: str, screen: pygame.Surface, pos: tuple, input_amt, output_amt, logic_func_or_circuit_or_circuit_dict, node_on_click_func: Callable[[Node], None] = None, node_on_color = 'pink', node_off_color = 'grey') -> None:
         self.name = name
         self.screen = screen
         self.font = pygame.font.SysFont('Times New Roman', 20)
@@ -38,7 +38,7 @@ class GateBaseClass:
         
         if isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
             self.logic_func = self.logic_func_or_circuit_or_circuit_dict
-        elif isinstance(self.logic_func_or_circuit_or_circuit_dict, GateBaseClass):
+        elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Circuit):
             self.logic_circuit = self.logic_func_or_circuit_or_circuit_dict.copy()
             self.logic_circuit.gate_update()
             self.logic_func = self._logic_func
@@ -48,6 +48,7 @@ class GateBaseClass:
         
         self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
         
+        self.disabled = False
         self.render = True
         
         self.input_nodes_state_tracker = []
@@ -210,6 +211,10 @@ class GateBaseClass:
         if render is not None:
             self.render = render
         
+        disabled = kwargs.get('disabled')
+        if disabled is not None:
+            self.disabled = disabled
+        
         mouse_pos = kwargs.get('mouse_pos')
         if mouse_pos is not None:
             self.mouse_pos = mouse_pos
@@ -298,12 +303,14 @@ class GateBaseClass:
                 pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.left - self.node_pin_size[0], node_in.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
             node_in.update()
             node_in.configure(render=self.render)
+            node_in.node_button.configure(disabled=self.disabled)
         
         for node_out in self.output_nodes:
             if self.render:
                 pygame.draw.rect(self.screen, self.node_pin_color, (self.button.rect.right, node_out.get_rect().centery - self.node_pin_size[1] / 2, *self.node_pin_size))
             node_out.update()
             node_out.configure(render=self.render)
+            node_out.node_button.configure(disabled=self.disabled)
     
     def _logic_func(self, inputs):
         self.logic_circuit.set_inputnodes(inputs)
@@ -321,8 +328,7 @@ class GateBaseClass:
         self.logic(input_states)
         self.draw()
         self.button.update()
-        self.button.configure(render=self.render)
-
+        self.button.configure(disabled=self.disabled, render=self.render)
         self.mouse_pos = pygame.mouse.get_pos()
         self.grid_mouse_pos = tuple(list((i - (i % GRID_SIZE)) for i in self.mouse_pos))
 
@@ -413,7 +419,6 @@ class Circuit:
             new_wire = wire.copy()
             new_wire.configure(delete_func=lambda w: circuit._remove_wire(w))
             circuit.wires.append(new_wire)
-        
         
         circuit_nodes = circuit._get_all_nodes()
         for node in circuit_nodes:

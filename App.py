@@ -3,7 +3,7 @@ import subprocess
 import sys
 import threading
 import pygame
-from settings import SCR_WIDTH, SCR_HEIGHT, FPS
+from settings import SCR_WIDTH, SCR_HEIGHT, FPS, APP_NAME
 from logic_circuits_display import GateDisplay
 from widgets import MenuBar, ListView
 from misc import Save
@@ -17,7 +17,7 @@ class App:
         self.screen = pygame.display.set_mode((SCR_WIDTH, SCR_HEIGHT))
         logo = pygame.image.load('logos/logo.png')
         pygame.display.set_icon(logo)
-        pygame.display.set_caption('IFEs Logic Gate Simulator')
+        pygame.display.set_caption(APP_NAME + ' - Unsaved' if file_path is None else '')
         self.clock = pygame.time.Clock()
         
         self._file_path = file_path
@@ -51,14 +51,13 @@ class App:
                 'Paste': print,
             }
         }
-        self.menubar = MenuBar(self.screen, 0, 50, 25, 'blue', 'white', 'black', 2, 2, 2, menu_bar_options)
-        
         app_control_options = {
-            "     I+     ": lambda: self.circuit_displayer.circuit.add_input(),
             "New Circuit": self.circuit_displayer._make_new_circuit,
             " Make Gate ": self.circuit_displayer._make_gate,
-            "     O+     ": lambda: self.circuit_displayer.circuit.add_output(),
         }
+        
+        self.menubar = MenuBar(self.screen, 0, 50, 25, 100, 25, 'transparent', 'grey20', 'transparent', 'lightblue', 'white', 'black', 2, 2, 2, menu_bar_options)
+        
         app_control_widget_width = 90
         app_control_widget_height = 25
         app_control_widget_spacing = 10
@@ -70,6 +69,7 @@ class App:
                                      self.screen.get_height() - app_control_widget_height - (app_control_widget_y_border_offset * 2)),
                                     app_control_widget_width,
                                     app_control_widget_height,
+                                    'transparent',
                                     'blue',
                                     'white',
                                     app_control_widget_spacing,
@@ -87,7 +87,7 @@ class App:
     @file_path.setter
     def file_path(self, v):
         self._file_path = v
-        pygame.display.set_caption(f'IFEs Logic Gate Simulator - {self._file_path}')
+        pygame.display.set_caption(f'{APP_NAME} - {self._file_path}')
     
     def _init_circuit_displayer(self, new_file: str):
         self.circuit_displayer = GateDisplay(self.screen, 100)

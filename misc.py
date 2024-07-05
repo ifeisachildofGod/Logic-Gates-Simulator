@@ -3,8 +3,6 @@ import os
 from pathlib import Path
 from tkinter import filedialog
 from typing import Any, Callable
-from settings import NEW_FILE_ID
-
 
 class Save:
     def __init__(self, file_path: str, init_save_info: Any, new_screen_initializer_func: Callable[[str, bool], None], filetype: tuple[str, str], save_func: Callable[[Any, str], None] = None):
