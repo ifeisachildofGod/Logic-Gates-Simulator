@@ -4,11 +4,12 @@ import sys
 import threading
 import pygame
 from settings import SCR_WIDTH, SCR_HEIGHT, FPS, APP_NAME
-from logic_circuits_display import GateDisplay
+from logic_circuits_display import CircuitDisplay
 from widgets import MenuBar, ListView
 from misc import Save
 import pickle
-
+from widgets import Button
+from modules import set_color
 
 class App:
     def __init__(self, file_path: str | None, main_file_path: str, new_file: bool) -> None:
@@ -36,7 +37,25 @@ class App:
         
         self.reset_it = True
         
+        self.button_colors = '#777777'
+        self.button_text_colors = 'white'
+        self.border_radius = 10
+        self.border_offset = 30
+        self.add_buttons_size = 30, 39
+        self.add_buttons_border_offset = 30
+        
         self._init_circuit_displayer(new_file)
+        
+        self.detailed_font = pygame.font.SysFont('Arial', 500)
+        self.add_node_font = pygame.font.SysFont('Arial', 45)
+        self.edit_button_font = pygame.font.SysFont('Sans Serif', 20)
+        
+        self.delete_circuit_button = Button(self.screen, (0, 0), (10, 10), 'red', image=self.detailed_font.render('x', True, 'white'), on_left_mouse_button_clicked=self.circuit_displayer._remove_cicuit, border_radius=0, scale_img=True)
+        
+        self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index - 1))
+        self.next_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('>', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index + 1))
+        self.add_input_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer.circuit.add_input(), border_radius=self.border_radius)
+        self.add_output_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer.circuit.add_output(), border_radius=self.border_radius)
         
         menu_bar_options = {
             "File": {
@@ -57,6 +76,7 @@ class App:
         app_control_options = {
             "New Circuit": self.circuit_displayer._make_new_circuit,
             " Make Gate ": self.circuit_displayer._make_gate,
+            " Edit Gate ": self.circuit_displayer._edit_circuit,
         }
         
         self.menubar = MenuBar(self.screen, 0, 40, 20, 100, 25, 'transparent', 'grey20', 'transparent', 'lightblue', 'white', 'grey15', 2, 2, 2, menu_bar_options, dropdown_font_family='System')
@@ -83,6 +103,12 @@ class App:
                                     'horizontal',
                                     font=pygame.font.SysFont('Cambria', int(app_control_widget_height / 2)))
         
+        self.delete_circuit_button.set_pos(bottomright=self.app_control.bg_rect.topright)
+        self.prev_circuit_button.set_pos(midright=(self.app_control.bg_rect.left, self.app_control.bg_rect.centery))
+        self.next_circuit_button.set_pos(midleft=(self.app_control.bg_rect.right, self.app_control.bg_rect.centery))
+        self.add_input_button.set_pos(midbottom=(self.border_offset, self.screen.get_height() - self.border_offset))
+        self.add_output_button.set_pos(midbottom=(self.screen.get_width() - self.border_offset, self.screen.get_height() - self.border_offset))
+        
         self.gate_circuit_index_tracker = None
     
     @property
@@ -95,7 +121,7 @@ class App:
         pygame.display.set_caption(f'{APP_NAME} - {self._file_path}')
     
     def _init_circuit_displayer(self, new_file: str):
-        self.circuit_displayer = GateDisplay(self.screen, 100)
+        self.circuit_displayer = CircuitDisplay(self.screen, 100, self.add_buttons_border_offset, self.add_buttons_size)
         if self.file_path is not None and not new_file:
             with open(self.file_path, 'rb') as file_path:
                 value = pickle.load(file_path)
@@ -110,6 +136,14 @@ class App:
         subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.main_file_path, file_path, str(int(new_file))]))
         subprocess_thread.daemon = True
         subprocess_thread.start()
+    
+    def _recolor_widgets(self, color):
+        ui_colors = set_color(color, 170)
+        
+        self.prev_circuit_button.configure(bg_color=ui_colors)
+        self.next_circuit_button.configure(bg_color=ui_colors)
+        self.add_input_button.configure(bg_color=ui_colors)
+        self.add_output_button.configure(bg_color=ui_colors)
     
     def _on_save(self):
         self.save.update_info(self.circuit_displayer.get_dict())
@@ -133,6 +167,16 @@ class App:
         self.screen.blit(self.fps_surf, self.fps_rect)
         
         self.circuit_displayer.update(self.events)
+        self.app_control.buttons[-1].configure(disabled=self.circuit_displayer.edit_index is None)
+        if self.circuit_displayer.circuit_index > 0:
+            self.delete_circuit_button.update()
+            self.prev_circuit_button.update()
+            self.prev_circuit_button.configure(border_radius=-1, border_top_left_radius=self.border_radius, border_bottom_left_radius=self.border_radius, border_top_right_radius=-1, border_bottom_right_radius=-1)
+        
+        if self.circuit_displayer.circuit_index < len(self.circuit_displayer.circuit_editors) - 1:
+            self.next_circuit_button.update()
+            self.next_circuit_button.configure(border_radius=-1, border_top_left_radius=-1, border_bottom_left_radius=-1, border_top_right_radius=self.border_radius, border_bottom_right_radius=self.border_radius)
+        
         self.menubar.update()
         self.app_control.update()
     

@@ -5,20 +5,16 @@ from settings import *
 from logic_gates_components import *
 from widgets import Button, ScrollableSurface
 from pygame_textinput import TextInputManager, TextInputVisualizer
-from modules import set_color, is_clicked
+from modules import is_clicked
 
-class GateDisplay:
-    def __init__(self, screen: pygame.Surface, max_circuit_amt: int) -> None:
+class CircuitDisplay:
+    def __init__(self, screen: pygame.Surface, max_circuit_amt: int, add_buttons_border_offset: int, add_buttons_size: tuple) -> None:
         self.screen = screen
         
         self.max_circuit_amt = max_circuit_amt
         
-        self.button_colors = '#777777'
-        self.button_text_colors = 'white'
-        self.button_border_offset = 20
-        self.border_offset = 30
-        self.border_radius = 10
-        self.add_buttons_size = 30, 39
+        self.add_buttons_size = add_buttons_size
+        self.add_buttons_border_offset = add_buttons_border_offset
         
         self._theme_color = 'red'
         
@@ -26,17 +22,8 @@ class GateDisplay:
         
         self.circuit_editors: list[Circuit] = []
         self.circuit_index = -1
-                
-        self.detailed_font = pygame.font.SysFont('Arial', 500)
-        self.add_node_font = pygame.font.SysFont('Arial', 45)
-        self.edit_button_font = pygame.font.SysFont('Sans Serif', 20)
+        
         self.textinput_font = pygame.font.SysFont('Consolas', 55)
-        
-        self.delete_circuit_button = Button(self.screen, (0, 0), (15, 25), 'red', image=self.detailed_font.render('x', True, 'white'), on_left_mouse_button_clicked=self._remove_cicuit, border_radius=0, scale_img=True)
-        self.delete_circuit_button.set_pos(topright=(self.screen.get_width(), 0))
-        
-        self.edit_gate_option_button = Button(self.screen, (0, 0), (100, 20), self.button_colors, image=self.edit_button_font.render('Edit', True, self.button_text_colors), border_radius=self.border_radius, on_left_mouse_button_clicked=self._edit_circuit)
-        self.edit_gate_option_button.set_pos(midtop=(self.screen.get_width() / 2, 0))
         
         def get_textinput_rect():
             return self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, 30))
@@ -52,16 +39,6 @@ class GateDisplay:
         self.textinput.cursor_visible = False
         self.textinput_rect = get_textinput_rect()
         
-        self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self._change_circuit(self.circuit_index - 1), border_radius=self.border_radius)
-        self.prev_circuit_button.set_pos(topleft=(0, self.delete_circuit_button.rect.bottom + 20))
-        self.next_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('>', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self._change_circuit(self.circuit_index + 1), border_radius=self.border_radius)
-        self.next_circuit_button.set_pos(topright=(self.screen.get_width(), self.delete_circuit_button.rect.bottom + 20))
-        
-        self.add_input_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit.add_input(), border_radius=self.border_radius)
-        self.add_input_button.set_pos(midbottom=(self.border_offset, self.screen.get_height() - self.border_offset))
-        self.add_output_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit.add_output(), border_radius=self.border_radius)
-        self.add_output_button.set_pos(midbottom=(self.screen.get_width() - self.border_offset, self.screen.get_height() - self.border_offset))
-
         self.edit_index = None
         self.edit_indices = []
         self._make_new_circuit()
@@ -81,8 +58,10 @@ class GateDisplay:
         
         self.gate_display_spacing = 5
         
-        max_height = max(gate_op.button.rect.height for gate_op in self.gate_options) + self.border_offset
-        gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
+        max_height = max(gate_op.button.rect.height for gate_op in self.gate_options) + self.add_buttons_border_offset
+        far_left = self.add_buttons_border_offset + self.add_buttons_size[0] + self.add_buttons_border_offset
+        far_right = self.screen.get_width() - (self.add_buttons_border_offset * 2) - (self.add_buttons_size[0] / 2)
+        gate_option_viewer_size = far_right - far_left, max_height
         gates_surf_width = sum([(gate.get_rect().width + self.gate_display_spacing) for gate in self.gate_options]) + self.gate_display_spacing
         self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]), pygame.SRCALPHA)
         
@@ -107,7 +86,7 @@ class GateDisplay:
                                                     self.gates_surf,
                                                     (max((gate_option_viewer_size[0] / 2) - (self.gates_surf.get_width() / 2), 0), 0),
                                                     ((self.screen.get_width() / 2) - (gate_option_viewer_size[0] / 2),
-                                                     self.screen.get_height() - gate_option_viewer_size[1] - self.border_offset),
+                                                     self.screen.get_height() - gate_option_viewer_size[1] - self.add_buttons_border_offset),
                                                     gate_option_viewer_size,
                                                     orientation='x')
         
@@ -137,7 +116,6 @@ class GateDisplay:
     @theme_color.setter
     def theme_color(self, v):
         self._theme_color = v
-        self._recolor_widgets(self._theme_color)
         self.circuit.theme_color = self._theme_color
         self._recompile_gate_option_viewer()
     
@@ -169,20 +147,12 @@ class GateDisplay:
             self._recompile_gate_option_viewer()
         
         for gate_op_info in gate_options_info:
-            gate = GateBaseClass('_', self.screen, (0, 0), 1, 1, lambda i: i[0], self.circuit.on_node_clicked)
+            gate = GateBaseClass('_', self.screen, (-200, -200), 1, 1, lambda i: i[0], self.circuit.on_node_clicked)
             gate.set_dict(gate_op_info)
             self.gate_circuits.append(gate)
             self._recompile_gate_option_viewer()
 
         self.theme_color = obj.pop('theme_color')
-    
-    def _recolor_widgets(self, color):
-        ui_colors = set_color(color, 170)
-        
-        self.prev_circuit_button.configure(bg_color=ui_colors)
-        self.next_circuit_button.configure(bg_color=ui_colors)
-        self.add_input_button.configure(bg_color=ui_colors)
-        self.add_output_button.configure(bg_color=ui_colors)
     
     def _remove_cicuit(self):
         self._change_circuit(self.circuit_index - 1)
@@ -203,7 +173,6 @@ class GateDisplay:
                 break
         else:
             self.edit_index = None
-        self._recolor_widgets(self.theme_color)
     
     def _make_remove_gate_option_func(self, old_gate: GateBaseClass):
         def func():
@@ -216,7 +185,7 @@ class GateDisplay:
     def _make_gate(self):
         new_gate = GateBaseClass(self.textinput.value,
                                  self.screen,
-                                 (0, 0),
+                                 (-200, -200),
                                  len(self.circuit.input_node_objects),
                                  len(self.circuit.output_nodes),
                                  self.circuit.copy())
@@ -264,18 +233,20 @@ class GateDisplay:
         initial_options = self.gate_options[:len(self.constant_gate_options)]
         custom_options = self.gate_options[len(self.constant_gate_options):].copy()
         
-        max_height = max(gate_op.button.rect.height for gate_op in self.constant_gate_options) + self.border_offset
-        gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
+        max_height = max(gate_op.button.rect.height for gate_op in self.constant_gate_options) + self.add_buttons_border_offset
+        far_left = self.add_buttons_border_offset + self.add_buttons_size[0] + self.add_buttons_border_offset
+        far_right = self.screen.get_width() - (self.add_buttons_border_offset * 2) - (self.add_buttons_size[0] / 2)
+        gate_option_viewer_size = far_right - far_left, max_height
         gates_surf_width = sum([(gate.get_rect().width + self.gate_display_spacing) for gate in self.constant_gate_options]) + self.gate_display_spacing
         self.gates_surf = pygame.Surface((gates_surf_width, gate_option_viewer_size[1]), pygame.SRCALPHA)
         
-        width = 0
+        x = 0
         for index, gate_op in enumerate(initial_options):
             gate_op.button.configure(on_right_mouse_button_clicked=self.circuit.make_remove_gate_func(index))
             display_gate = gate_op.copy()
-            display_gate.configure(screen=self.gates_surf, pos=(width, (self.gates_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
+            display_gate.configure(screen=self.gates_surf, pos=(x, (self.gates_surf.get_height() / 2) - (display_gate.button.rect.height / 2)))
             
-            width += self.gate_display_spacing + display_gate.get_rect().width
+            x += display_gate.get_rect().width + self.gate_display_spacing
             
             dsp_but = display_gate.button.copy()
             dsp_but.configure(many_actions_one_click=False, render=False)
@@ -284,7 +255,7 @@ class GateDisplay:
             
             self.circuit._set_gate_color(display_gate, self.circuit.theme_color)
             display_gate.update()
-        
+        self.gate_option_viewer.configure(blit_surf_pos=((self.screen.get_width() / 2) - (gate_option_viewer_size[0] / 2), self.screen.get_height() - gate_option_viewer_size[1] - self.add_buttons_border_offset))
         self.gate_option_viewer.configure(blit_surf_size=gate_option_viewer_size, sub_surf=self.gates_surf)
         for gate in custom_options:
             self.gate_options.remove(gate)
@@ -320,7 +291,7 @@ class GateDisplay:
     def _make_new_circuit(self, circuit = None, name: str = None):
         if len(self.circuit_editors) < self.max_circuit_amt:
             name = DEFAULT_CIRCUIT_NAME if name is None else name
-            circuit = Circuit(name, self.screen, self.screen.get_height() - self.border_offset - self.add_buttons_size[1], self.add_buttons_size[1], self.theme_color) if circuit is None else circuit
+            circuit = Circuit(name, self.screen, self.screen.get_height() - self.add_buttons_border_offset - self.add_buttons_size[1], self.add_buttons_size[1], self.theme_color) if circuit is None else circuit
             self.circuit_editors.insert(self.circuit_index + 1, circuit)
             self._change_circuit(self.circuit_index + 1)
     
@@ -344,21 +315,6 @@ class GateDisplay:
         self.mouse_pos = pygame.mouse.get_pos()
         self.events = events
         self.keys = pygame.key.get_pressed()
-        
-        self.add_input_button.update()
-        self.add_output_button.update()
-        
-        if self.edit_index is not None:
-            self.edit_gate_option_button.update()
-        
-        if self.circuit_index > 0:
-            self.delete_circuit_button.update()
-            self.prev_circuit_button.update()
-            self.prev_circuit_button.configure(border_radius=-1, border_top_left_radius=self.border_radius, border_bottom_left_radius=self.border_radius, border_top_right_radius=-1, border_bottom_right_radius=-1)
-        
-        if self.circuit_index < len(self.circuit_editors) - 1:
-            self.next_circuit_button.update()
-            self.next_circuit_button.configure(border_radius=-1, border_top_left_radius=-1, border_bottom_left_radius=-1, border_top_right_radius=self.border_radius, border_bottom_right_radius=self.border_radius)
         
         self.circuit.update()
         

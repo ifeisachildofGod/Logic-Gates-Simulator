@@ -55,7 +55,6 @@ pygame-*.log
 logos/
 screenshots/
 themes.json
-new.logic
 test.py
 
 # Miscellaneous

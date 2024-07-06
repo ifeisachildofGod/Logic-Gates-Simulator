@@ -514,7 +514,7 @@ class Button:
     
     def _draw(self):
         if self.button_color is not None:
-            pygame.draw.rect(self.screen, self.button_color, self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
+            pygame.draw.rect(self.screen, self.button_color if not self.disabled else set_color(self.button_color, 150), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
@@ -704,6 +704,8 @@ class ListView:
         self.bg_width = (self.width + (self.x_border_offset * 2)) if self.orientation_is_vertical else ((len(self.options) * (self.width + self.spacing)) + (self.x_border_offset * 2))
         self.bg_height = ((len(self.options) * (self.option_height + self.spacing)) + (self.y_border_offset * 2)) if self.orientation_is_vertical else (self.option_height + (self.y_border_offset * 2))
         
+        self.bg_rect = pygame.draw.rect(self.screen, self.bg_color, (*self.pos, self.bg_width, self.bg_height), border_radius=self.border_radius)
+        
         self._compile_menu()
     
     def configure(self, **kwargs):
@@ -778,7 +780,7 @@ class ListView:
         return pos
     
     def update(self):
-        pygame.draw.rect(self.screen, self.bg_color, (*self.pos, self.bg_width, self.bg_height), border_radius=self.border_radius)
+        self.bg_rect = pygame.draw.rect(self.screen, self.bg_color, (*self.pos, self.bg_width, self.bg_height), border_radius=self.border_radius)
         pygame.draw.rect(self.screen, 'white' if sum(set_color(self.bg_color, 255)) / 3 < 125 else 'black', (*self.pos, self.bg_width, self.bg_height), 1, border_radius=self.border_radius)
         for button in self.buttons:
             button.update()
