@@ -17,7 +17,7 @@ class App:
         self.screen = pygame.display.set_mode((SCR_WIDTH, SCR_HEIGHT))
         logo = pygame.image.load('logos/logo.png')
         pygame.display.set_icon(logo)
-        pygame.display.set_caption(APP_NAME + ' - Unsaved' if file_path is None else '')
+        pygame.display.set_caption(APP_NAME + ' - *Unsaved' if file_path is None else '')
         self.clock = pygame.time.Clock()
         
         self._file_path = file_path
@@ -30,8 +30,11 @@ class App:
             self.bg_colors = json.loads(file.read())
         
         self.BG_COLOR = self.bg_colors["0"]
+        self.BG_COLOR_tracker = None
         
         self.save = Save(self.file_path, {}, self._open_new, ['IFEs Logical File', '*.logic'], self._save_func)
+        
+        self.reset_it = True
         
         self._init_circuit_displayer(new_file)
         
@@ -56,7 +59,7 @@ class App:
             " Make Gate ": self.circuit_displayer._make_gate,
         }
         
-        self.menubar = MenuBar(self.screen, 0, 50, 25, 100, 25, 'transparent', 'grey20', 'transparent', 'lightblue', 'white', 'black', 2, 2, 2, menu_bar_options)
+        self.menubar = MenuBar(self.screen, 0, 40, 20, 100, 25, 'transparent', 'grey20', 'transparent', 'lightblue', 'white', 'grey15', 2, 2, 2, menu_bar_options, dropdown_font_family='System')
         
         app_control_widget_width = 90
         app_control_widget_height = 25
@@ -69,14 +72,16 @@ class App:
                                      self.screen.get_height() - app_control_widget_height - (app_control_widget_y_border_offset * 2)),
                                     app_control_widget_width,
                                     app_control_widget_height,
-                                    'transparent',
-                                    'blue',
+                                    'grey30',
+                                    'grey6',
+                                    None,
                                     'white',
                                     app_control_widget_spacing,
                                     app_control_widget_x_border_offset,
                                     app_control_widget_y_border_offset,
                                     app_control_options,
-                                    'horizontal')
+                                    'horizontal',
+                                    font=pygame.font.SysFont('Cambria', int(app_control_widget_height / 2)))
         
         self.gate_circuit_index_tracker = None
     
@@ -108,6 +113,7 @@ class App:
     
     def _on_save(self):
         self.save.update_info(self.circuit_displayer.get_dict())
+        self.reset_it = False
     
     def _save(self):
         self._on_save()
@@ -144,11 +150,18 @@ class App:
             
             self.BG_COLOR = self.bg_colors[str(self.circuit_displayer.circuit_index)]
             
-            if self.gate_circuit_index_tracker != self.circuit_displayer.circuit_index:
-                self.circuit_displayer.theme_color = self.BG_COLOR
+            if self.BG_COLOR_tracker != self.BG_COLOR:
+                self.BG_COLOR_tracker = self.circuit_displayer.theme_color = self.BG_COLOR
+            
+            if self.save.file_path is not None:
+                if self.circuit_displayer.get_dict() != self.save.save_info:
+                    if not self.reset_it:
+                        pygame.display.set_caption(f'{APP_NAME} - {self._file_path} - *Unsaved')
+                        self.reset_it = True
+                    # self.save.save()
             
             self.screen.fill(self.BG_COLOR)
-
+            
             self.events = pygame.event.get()
             for event in self.events:
                 self._event_loop(event)

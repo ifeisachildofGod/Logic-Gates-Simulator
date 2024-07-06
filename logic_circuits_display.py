@@ -219,7 +219,7 @@ class GateDisplay:
                                  (0, 0),
                                  len(self.circuit.input_node_objects),
                                  len(self.circuit.output_nodes),
-                                 self.circuit)
+                                 self.circuit.copy())
         new_gate.update()
                 
         self.circuit.gate = new_gate, self.circuit.copy()
@@ -263,7 +263,7 @@ class GateDisplay:
         
         initial_options = self.gate_options[:len(self.constant_gate_options)]
         custom_options = self.gate_options[len(self.constant_gate_options):].copy()
-        # print('atu')
+        
         max_height = max(gate_op.button.rect.height for gate_op in self.constant_gate_options) + self.border_offset
         gate_option_viewer_size = (self.add_output_button.rect.left - self.border_offset) - (self.add_input_button.rect.right + self.border_offset), max_height
         gates_surf_width = sum([(gate.get_rect().width + self.gate_display_spacing) for gate in self.constant_gate_options]) + self.gate_display_spacing
@@ -341,8 +341,6 @@ class GateDisplay:
         self.screen.blit(self.textinput.surface, self.textinput_rect)
     
     def update(self, events):
-        # print('ifestart')
-        
         self.mouse_pos = pygame.mouse.get_pos()
         self.events = events
         self.keys = pygame.key.get_pressed()
@@ -373,24 +371,17 @@ class GateDisplay:
         
         self.gate_option_viewer.update()
         
-        for gate in self.gate_options:
-            gate.configure(disabled=True)
-        
         self._update_textinput()
-        
         for index, button in enumerate(self.display_gate_buttons_list):
             m_pos = (self.mouse_pos[0] - self.gate_option_viewer.blit_rect.x - self.gate_option_viewer.sub_surf_rect.x,
                          self.mouse_pos[1] - self.gate_option_viewer.blit_rect.y - self.gate_option_viewer.sub_surf_rect.y)
             
             gate = self.gate_options[index]
+            gate.configure(node_on_click_func=self.circuit.on_node_clicked)
             button.configure(mouse_pos=m_pos, on_left_mouse_button_clicked=self.circuit.make_add_gate_func(gate))
             if index > len(self.constant_gate_options) - 1:
                 button.configure(on_middle_mouse_button_clicked=self._make_set_circuit_editor_func(index), on_right_mouse_button_clicked=self._make_remove_gate_option_func(gate))
             button.update()
-        
-        # print('ifeend')
-        # print()
-        
 
 
 

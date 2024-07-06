@@ -162,7 +162,7 @@ class GateBaseClass:
                             on_click_func=self.node_on_click_func)
             self.input_nodes.append(new_node)
             for index, node in enumerate(self.input_nodes):
-                node.configure(pos=self._get_node_y_pos(self.input_amt, index))
+                node.configure(pos=(self.pos[0], self._get_node_y_pos(self.input_amt, index)))
         
         output_amt = kwargs.get('output_amt')
         if output_amt is not None:
@@ -253,6 +253,8 @@ class GateBaseClass:
         node_on_click_func = kwargs.get('node_on_click_func')
         if node_on_click_func is not None:
             self.node_on_click_func = node_on_click_func
+            for node in self.input_nodes + self.output_nodes:
+                node.configure(on_click_func=self.node_on_click_func)
     
     def _on_move(self, dest):
         dest_x, dest_y = dest
@@ -401,7 +403,6 @@ class Circuit:
         
         circuit.update_output_button_removal = True
         circuit.update_input_button_removal = True
-        circuit.wire_connected_trackers = {wire: False for wire in circuit.wires}
         
         for but, node in self.input_node_objects:
             new_node = node.copy()
@@ -419,6 +420,8 @@ class Circuit:
             new_wire = wire.copy()
             new_wire.configure(delete_func=lambda w: circuit._remove_wire(w))
             circuit.wires.append(new_wire)
+        
+        circuit.wire_connected_trackers = {wire: False for wire in circuit.wires}
         
         circuit_nodes = circuit._get_all_nodes()
         for node in circuit_nodes:
@@ -477,7 +480,7 @@ class Circuit:
             self.output_nodes.append(new_node)
         
         for gate_info in gates:
-            new_gate = GateBaseClass('_', self.screen, (0, 0), 1, 1, lambda l: l, self.on_node_clicked)
+            new_gate = GateBaseClass('_', self.screen, gate_info['pos'], 1, 1, lambda l: l, self.on_node_clicked)
             new_gate.set_dict(gate_info)
             self.gates.append(new_gate)
         

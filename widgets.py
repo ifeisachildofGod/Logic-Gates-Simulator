@@ -203,7 +203,7 @@ class Button:
         return pos
     
     def set_pos(self, **kwargs):
-        pos = self._get_pos(**kwargs)
+        pos = self._get_pos(None, **kwargs)
         if pos != self.pos:
             self.pos = pos
             self._set_topleft(pos)
@@ -661,10 +661,28 @@ class ScrollableSurface:
             self.scroll_wheel_y.update()
 
 class ListView:
-    def __init__(self, screen, pos, width, option_height, button_color, button_hover_color, button_text_color, spacing, x_border_offset, y_border_offset, options: dict[str, Callable], orientation: Literal['vertical', 'horizontal'] = 'vertical') -> None:
+    def __init__(self,
+                 screen,
+                 pos,
+                 width,
+                 option_height,
+                 button_color,
+                 bg_color,
+                 button_hover_color,
+                 button_text_color,
+                 spacing,
+                 x_border_offset,
+                 y_border_offset,
+                 options: dict[str, Callable],
+                 orientation: Literal['vertical', 'horizontal'] = 'vertical',
+                 button_text_anchor: Literal['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se', 'center'] = 'center',
+                 font: pygame.font.FontType = None,
+                 border_radius: int = 5) -> None:
+                 
         self.screen = screen
         self.pos = pos
         self.width = width
+        self.bg_color = bg_color
         self.button_color = button_color
         self.button_hover_color = button_hover_color
         self.button_text_color = button_text_color
@@ -674,9 +692,12 @@ class ListView:
         self.spacing = spacing
         self.options = options
         self.orientation = orientation
+        self.button_text_anchor = button_text_anchor
+        self.border_radius = border_radius
+        
         self.buttons: list[Button] = []
 
-        self.font = pygame.font.SysFont('Arial', int(self.option_height))
+        self.font = pygame.font.SysFont('Arial', int(self.option_height)) if font is None else font
         
         self.orientation_is_vertical = self.orientation == 'vertical'
         
@@ -745,8 +766,9 @@ class ListView:
                             hover_color=self.button_hover_color,
                             image=self.font.render(name, True, self.button_text_color),
                             img_border_offset=(4, 0),
-                            img_anchor='w',
-                            on_left_mouse_button_clicked=func)
+                            img_anchor=self.button_text_anchor,
+                            on_left_mouse_button_clicked=func,
+                            border_radius=self.border_radius)
             self.buttons.append(button)
     
     def _get_pos(self, index):
@@ -756,12 +778,30 @@ class ListView:
         return pos
     
     def update(self):
-        pygame.draw.rect(self.screen, 'black', (*self.pos, self.bg_width, self.bg_height))
+        pygame.draw.rect(self.screen, self.bg_color, (*self.pos, self.bg_width, self.bg_height), border_radius=self.border_radius)
+        pygame.draw.rect(self.screen, 'white' if sum(set_color(self.bg_color, 255)) / 3 < 125 else 'black', (*self.pos, self.bg_width, self.bg_height), 1, border_radius=self.border_radius)
         for button in self.buttons:
             button.update()
 
 class MenuBar:
-    def __init__(self, screen, y_pos, button_width, button_height, dropdown_button_width, dropdown_button_height, button_color, button_hover_color, dropdown_button_color, dropdown_button_hover_color, button_text_color, bg_color, x_border_offset, y_border_offset, menu_spacing, options: dict[str, dict[str, Callable]]) -> None:
+    def __init__(self, screen: pygame.Surface,
+                 y_pos,
+                 button_width,
+                 button_height,
+                 dropdown_button_width,
+                 dropdown_button_height,
+                 button_color,
+                 button_hover_color,
+                 dropdown_button_color,
+                 dropdown_button_hover_color,
+                 button_text_color,
+                 bg_color,
+                 x_border_offset,
+                 y_border_offset,
+                 menu_spacing,
+                 options: dict[str, dict[str, Callable]],
+                 font_family: str = 'Arial',
+                 dropdown_font_family: str = 'Jokerman') -> None:
         self.screen = screen
                 
         self.y_pos = y_pos
@@ -783,8 +823,9 @@ class MenuBar:
         
         self.menu_option_buttons: list[Button] = []
         self.menu_option_dropdowns: list[ListView] = []
-
-        self.font = pygame.font.SysFont('Arial', int(self.dropdown_button_height))
+        
+        self.font = pygame.font.SysFont(font_family, int(self.button_height / 1.5), bold=True)
+        self.dropdown_font = pygame.font.SysFont(dropdown_font_family, int(self.dropdown_button_height / 1.5), )
         
         self._compile_menus()
     
@@ -843,9 +884,10 @@ class MenuBar:
     def _compile_menus(self):
         for index, (menu_name, menu_options) in enumerate(self.options.items()):
             button = Button(self.screen,
-                            (self.x_border_offset + (index * (self.dropdown_button_width + self.menu_spacing)),
-                             self.y_border_offset + self.y_pos), (self.dropdown_button_width, self.dropdown_button_height),
-                            self.dropdown_button_color,
+                            (self.x_border_offset + (index * (self.button_width + self.menu_spacing)),
+                             self.y_border_offset + self.y_pos),
+                            (self.button_width, self.button_height),
+                            self.button_color,
                             hover_color=self.button_hover_color,
                             image=self.font.render(menu_name, True, self.button_text_color),
                             on_hover=self._get_menu_opt_hover_func(index),
@@ -855,12 +897,15 @@ class MenuBar:
                                 self.dropdown_button_width,
                                 self.dropdown_button_height,
                                 self.dropdown_button_color,
+                                self.bg_color,
                                 self.dropdown_button_hover_color,
                                 self.button_text_color,
                                 self.menu_spacing,
                                 self.x_border_offset,
                                 self.y_border_offset,
-                                menu_options)
+                                menu_options,
+                                button_text_anchor='w',
+                                font=self.dropdown_font)
             
             self.menu_option_buttons.append(button)
             self.menu_option_dropdowns.append(dropdown)
@@ -882,8 +927,8 @@ class MenuBar:
         return func
     
     def update(self):
-        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.dropdown_button_height + (self.y_border_offset * 2)))
-
+        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.button_height + (self.y_border_offset * 2)))
+        
         buttons_clicked = []
         for button in self.menu_option_buttons:
             mouse_clicked, _, _, _ = button.update()
