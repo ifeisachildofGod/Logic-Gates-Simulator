@@ -310,6 +310,10 @@ class Button:
                 self.image_surf = self.image = None
                 self.img_rect = None
         
+        hover_color = kwargs.get('hover_color')
+        if 'hover_color' in kwargs:
+            self.hover_color = hover_color
+        
         img_border_offset = kwargs.get('img_border_offset')
         if img_border_offset is not None:
             self.img_border_offset = img_border_offset
@@ -753,6 +757,23 @@ class ListView:
             for button in self.buttons:
                 button.configure(bg_color=self.button_color)
         
+        bg_color = kwargs.get('bg_color')
+        if bg_color is not None:
+            self.bg_color = bg_color
+            self.configure(button_text_color=self.button_text_color)
+        
+        button_hover_color = kwargs.get('button_hover_color')
+        if button_hover_color is not None:
+            self.button_hover_color = button_hover_color
+            for button in self.buttons:
+                button.configure(hover_color=self.button_hover_color)
+        
+        button_text_color = kwargs.get('button_text_color')
+        if button_text_color is not None:
+            self.button_text_color = button_text_color
+            for index, (name, _) in enumerate(self.options.items()):
+                self.buttons[index].configure(image=self.font.render(name, True, self.button_text_color))
+        
         options = kwargs.get('options')
         if options is not None:
             self.options = options
@@ -781,7 +802,7 @@ class ListView:
     
     def update(self):
         self.bg_rect = pygame.draw.rect(self.screen, self.bg_color, (*self.pos, self.bg_width, self.bg_height), border_radius=self.border_radius)
-        pygame.draw.rect(self.screen, 'white' if sum(set_color(self.bg_color, 255)) / 3 < 125 else 'black', (*self.pos, self.bg_width, self.bg_height), 1, border_radius=self.border_radius)
+        pygame.draw.rect(self.screen, 'white' if sum(set_color(self.bg_color, 255)) / 3 > 125 else 'black', (*self.pos, self.bg_width, self.bg_height), 1, border_radius=self.border_radius)
         for button in self.buttons:
             button.update()
 
@@ -829,6 +850,8 @@ class MenuBar:
         self.font = pygame.font.SysFont(font_family, int(self.button_height / 1.5), bold=True)
         self.dropdown_font = pygame.font.SysFont(dropdown_font_family, int(self.dropdown_button_height / 1.5), )
         
+        self.text_color = 'white' if sum(set_color(self.bg_color, 255)) / 3 > 125 else 'black'
+        
         self._compile_menus()
     
     def configure(self, **kwargs):
@@ -870,11 +893,26 @@ class MenuBar:
             for button in self.menu_option_buttons:
                 button.configure(bg_color=self.button_color)
         
+        button_hover_color = kwargs.get('button_hover_color')
+        if button_hover_color is not None:
+            self.button_hover_color = button_hover_color
+            for button in self.menu_option_buttons:
+                button.configure(hover_color=self.button_hover_color)
+            for dropdowns in self.menu_option_dropdowns:
+                dropdowns.configure(button_hover_color=self.button_hover_color)
+        
         dropdown_button_color = kwargs.get('dropdown_button_color')
         if dropdown_button_color is not None:
             self.dropdown_button_color = dropdown_button_color
             for dropdowns in self.menu_option_dropdowns:
                 dropdowns.configure(button_color=self.dropdown_button_color)
+        
+        bg_color = kwargs.get('bg_color')
+        if bg_color is not None:
+            self.bg_color = bg_color
+            for index, (menu_name, _) in enumerate(self.options.items()):
+                self.menu_option_buttons[index].configure(image=self.font.render(menu_name, True, self.text_color))
+                self.menu_option_dropdowns[index].configure(bg_color=self.bg_color)
         
         options = kwargs.get('options')
         if options is not None:
@@ -891,7 +929,7 @@ class MenuBar:
                             (self.button_width, self.button_height),
                             self.button_color,
                             hover_color=self.button_hover_color,
-                            image=self.font.render(menu_name, True, self.button_text_color),
+                            image=self.font.render(menu_name, True, self.text_color),
                             on_hover=self._get_menu_opt_hover_func(index),
                             on_left_mouse_button_clicked=self._get_menu_button_func(index))
             dropdown = ListView(self.screen,
@@ -901,7 +939,7 @@ class MenuBar:
                                 self.dropdown_button_color,
                                 self.bg_color,
                                 self.dropdown_button_hover_color,
-                                self.button_text_color,
+                                self.text_color,
                                 self.menu_spacing,
                                 self.x_border_offset,
                                 self.y_border_offset,
@@ -929,6 +967,8 @@ class MenuBar:
         return func
     
     def update(self):
+        self.text_color = 'white' if sum(set_color(self.bg_color, 255)) / 3 > 125 else 'black'
+        
         pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.button_height + (self.y_border_offset * 2)))
         
         buttons_clicked = []

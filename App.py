@@ -30,8 +30,8 @@ class App:
         with open('themes.json') as file:
             self.bg_colors = json.loads(file.read())
         
-        self.BG_COLOR = self.bg_colors["0"]
-        self.BG_COLOR_tracker = None
+        self._bg_color = None
+        self.BG_COLOR_tracker = self.bg_colors["0"]
         
         self.save = Save(self.file_path, {}, self._open_new, ['IFEs Logical File', '*.logic'], self._save_func)
         
@@ -120,6 +120,16 @@ class App:
         self._file_path = v
         pygame.display.set_caption(f'{APP_NAME} - {self._file_path}')
     
+    @property
+    def BG_COLOR(self):
+        return self._bg_color
+    
+    @BG_COLOR.setter
+    def BG_COLOR(self, v):
+        self._bg_color = v
+        self.circuit_displayer.theme_color = self._bg_color
+        self._recolor_widgets(self._bg_color)
+    
     def _init_circuit_displayer(self, new_file: str):
         self.circuit_displayer = CircuitDisplay(self.screen, 100, self.add_buttons_border_offset, self.add_buttons_size)
         if self.file_path is not None and not new_file:
@@ -138,12 +148,22 @@ class App:
         subprocess_thread.start()
     
     def _recolor_widgets(self, color):
-        ui_colors = set_color(color, 170)
+        buttons_ui_colors = set_color(color, 170)
+        menu_bar_ui_color = set_color(color, 120)
+        app_control_ui_color = set_color(color, 30)
+        app_control_buttons_ui_color = set_color(color, 210)
+        menu_bar_button_hover_color = set_color(color, 90)
         
-        self.prev_circuit_button.configure(bg_color=ui_colors)
-        self.next_circuit_button.configure(bg_color=ui_colors)
-        self.add_input_button.configure(bg_color=ui_colors)
-        self.add_output_button.configure(bg_color=ui_colors)
+        self.prev_circuit_button.configure(bg_color=buttons_ui_colors)
+        self.next_circuit_button.configure(bg_color=buttons_ui_colors)
+        self.add_input_button.configure(bg_color=buttons_ui_colors)
+        self.add_output_button.configure(bg_color=buttons_ui_colors)
+        
+        self.menubar.configure(bg_color=menu_bar_ui_color)
+        self.app_control.configure(bg_color=app_control_ui_color)
+        for button in self.app_control.buttons:
+            button.configure(bg_color=app_control_buttons_ui_color)
+        self.menubar.configure(hover_color=menu_bar_button_hover_color)
     
     def _on_save(self):
         self.save.update_info(self.circuit_displayer.get_dict())
@@ -191,11 +211,11 @@ class App:
             self.keys = pygame.key.get_pressed()
             self.mouse_pos = pygame.mouse.get_pos()
             self.delta_time = self.clock.tick(FPS)
+
+            self.BG_COLOR_tracker = self.bg_colors[str(self.circuit_displayer.circuit_index)]
             
-            self.BG_COLOR = self.bg_colors[str(self.circuit_displayer.circuit_index)]
-            
-            if self.BG_COLOR_tracker != self.BG_COLOR:
-                self.BG_COLOR_tracker = self.circuit_displayer.theme_color = self.BG_COLOR
+            if self.BG_COLOR != self.BG_COLOR_tracker:
+                self.BG_COLOR = self.BG_COLOR_tracker
             
             if self.save.file_path is not None:
                 if self.circuit_displayer.get_dict() != self.save.save_info:
