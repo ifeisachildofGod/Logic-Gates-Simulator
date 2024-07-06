@@ -188,6 +188,10 @@ class App:
         
         self.circuit_displayer.update(self.events)
         self.app_control.buttons[-1].configure(disabled=self.circuit_displayer.edit_index is None)
+        
+        self.add_input_button.update()
+        self.add_output_button.update()
+        
         if self.circuit_displayer.circuit_index > 0:
             self.delete_circuit_button.update()
             self.prev_circuit_button.update()
