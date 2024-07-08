@@ -1,5 +1,5 @@
-from typing import Callable
 import pygame
+from typing import Callable
 
 def is_color(color):
     try:

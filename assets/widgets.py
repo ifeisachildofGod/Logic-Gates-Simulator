@@ -1,6 +1,6 @@
 import pygame
 from typing import Callable, Literal
-from modules import set_color
+from assets.modules import set_color
 
 class Button:
     def __init__(self,

@@ -1,13 +1,11 @@
 import math
 import time
 import pygame
-import pygame.draw_py
-from settings import *
-from widgets import Button
 from typing import Callable
-from modules import set_color
-from signal_tranfer import Node
-from signal_tranfer import Node, Wire
+from assets.settings import *
+from assets.widgets import Button
+from assets.modules import set_color
+from assets.signal_tranfer import Node, Wire
 
 class GateBaseClass:
     def __init__(self, name: str, screen: pygame.Surface, pos: tuple, input_amt, output_amt, logic_func_or_circuit_or_circuit_dict, node_on_click_func: Callable[[Node], None] = None, node_on_color = 'pink', node_off_color = 'grey') -> None:

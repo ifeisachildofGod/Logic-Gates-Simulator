@@ -68,25 +68,35 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 You can contact me, Nwufo Ifechukwu at my [Email](nwufoife@gmail.com) and check out my other projects on my [GitHub](https://github.com/ifeisachildofGod), if you don't want to have to run the code yourself you can download the full app executeable on my [Itch.io Page](https://theisachildofgod.itch.io/ifes-logic-gates-simulator)
 
 ## Screenshots
-!['Pictures 1'](screenshots/Screenshot1.png)
-!['Pictures 2'](screenshots/Screenshot2.png)
-!['Pictures 3'](screenshots/Screenshot3.png)
-!['Pictures 4'](screenshots/Screenshot4.png)
-!['Pictures 5'](screenshots/Screenshot5.png)
+!['Pictures 1'](assets/screenshots/Screenshot1.png)
+!['Pictures 2'](assets/screenshots/Screenshot2.png)
+!['Pictures 3'](assets/screenshots/Screenshot3.png)
+!['Pictures 4'](assets/screenshots/Screenshot4.png)
+!['Pictures 5'](assets/screenshots/Screenshot5.png)
 
 ## Directory Structure
-
 ```plaintext
     Logic-Gates-Simulator/
+    ├── assets/
+    │   ├── logos/
+    │   │   ├── logo.ico
+    │   │   └── logo.png
+    │   ├── screenshots/
+    │   │   ├── Screenshot1.png
+    │   │   ├── Screenshot2.png
+    │   │   ├── Screenshot3.png
+    │   │   ├── Screenshot4.png
+    │   │   └── Screenshot5.png
+    │   ├── App.py
+    │   ├── logic_circuits_display.py
+    │   ├── logic_gates_components.py
+    │   ├── modules.py
+    │   ├── save.py
+    │   ├── settings.py
+    │   ├── signal_transfer.py
+    │   ├── themes.json
+    │   ├── widgets.json
     ├── LICENSE
-    ├── README.md
     ├── main.py
-    ├── logic_circuits_display.py
-    ├── logic_gates_components.py
-    ├── modules.py
-    ├── settings.py
-    ├── signal_transfer.py
-    ├── widgets.py
-    ├── save.py
-    └── themes.json
+    └── README.md
 ```

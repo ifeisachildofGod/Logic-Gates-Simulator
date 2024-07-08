@@ -1,9 +1,9 @@
 import pygame
 from copy import deepcopy
 from typing import Callable
-from widgets import Button
-from settings import *
-from modules import is_clicked, set_color
+from assets.settings import *
+from assets.widgets import Button
+from assets.modules import is_clicked, set_color
 
 class SignalTransporter:
     def __init__(self, screen, color_on, color_off) -> None:

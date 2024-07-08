@@ -1,11 +1,10 @@
 import pygame
-from widgets import Button
-from logic_gates_components import GateBaseClass
-from settings import *
-from logic_gates_components import *
-from widgets import Button, ScrollableSurface
+from assets.settings import *
+from assets.widgets import Button
+from assets.modules import is_clicked
+from assets.logic_gates_components import *
+from assets.widgets import Button, ScrollableSurface
 from pygame_textinput import TextInputManager, TextInputVisualizer
-from modules import is_clicked
 
 class CircuitDisplay:
     def __init__(self, screen: pygame.Surface, max_circuit_amt: int, add_buttons_border_offset: int, add_buttons_size: tuple) -> None:

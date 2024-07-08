@@ -1,33 +1,34 @@
-import json
-import subprocess
+import os
 import sys
-import threading
-import pygame
-from settings import SCR_WIDTH, SCR_HEIGHT, FPS, APP_NAME
-from logic_circuits_display import CircuitDisplay
-from widgets import MenuBar, ListView
-from save import Save
+import json
 import pickle
-from widgets import Button
-from modules import set_color
+import pygame
+import threading
+import subprocess
+from pathlib import Path
+from assets.save import Save
+from assets.modules import set_color
+from assets.widgets import MenuBar, ListView, Button
+from assets.logic_circuits_display import CircuitDisplay
+from assets.settings import SCR_WIDTH, SCR_HEIGHT, FPS, APP_NAME
 
 class App:
-    def __init__(self, file_path: str | None, main_file_path: str, new_file: bool) -> None:
+    def __init__(self, file_path: str | None, new_file: bool) -> None:
         pygame.init()
         
         self.screen = pygame.display.set_mode((SCR_WIDTH, SCR_HEIGHT))
-        logo = pygame.image.load('logos/logo.png')
+        logo = pygame.image.load('assets/logos/logo.png')
         pygame.display.set_icon(logo)
         pygame.display.set_caption(APP_NAME + ' - *Unsaved' if file_path is None else '')
         self.clock = pygame.time.Clock()
         
         self._file_path = file_path
         
-        self.main_file_path = main_file_path
+        self.mainpy_file_path = [path.as_posix() for path in list(Path(os.getcwd()).glob('*.py'))][0]
         
         self.font = pygame.font.SysFont('Consolas', 20)
         
-        with open('themes.json') as file:
+        with open('assets/themes.json') as file:
             self.bg_colors = json.loads(file.read())
         
         self._bg_color = None
@@ -143,7 +144,7 @@ class App:
         self.file_path = self.save.file_path
     
     def _open_new(self, file_path, new_file):
-        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.main_file_path, file_path, str(int(new_file))]))
+        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.mainpy_file_path, file_path, str(int(new_file))]))
         subprocess_thread.daemon = True
         subprocess_thread.start()
     
