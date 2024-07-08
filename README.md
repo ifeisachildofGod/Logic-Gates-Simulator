@@ -80,10 +80,13 @@ You can contact me, Nwufo Ifechukwu at my [Email](nwufoife@gmail.com) and check 
     Logic-Gates-Simulator/
     ├── LICENSE
     ├── README.md
-    ├── logic_circuits.py
-    ├── logic_gates.py
+    ├── main.py
+    ├── logic_circuits_display.py
+    ├── logic_gates_components.py
+    ├── modules.py
     ├── settings.py
     ├── signal_transfer.py
     ├── widgets.py
+    ├── save.py
     └── themes.json
 ```
