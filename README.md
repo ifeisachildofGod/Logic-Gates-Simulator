@@ -68,11 +68,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 You can contact me, Nwufo Ifechukwu at my [Email](nwufoife@gmail.com) and check out my other projects on my [GitHub](https://github.com/ifeisachildofGod), if you don't want to have to run the code yourself you can download the full app executeable on my [Itch.io Page](https://theisachildofgod.itch.io/ifes-logic-gates-simulator)
 
 ## Screenshots
-!['Pictures 1'](screenshots/screenshot%201.png)
-!['Pictures 2'](screenshots/screenshot%202.png)
-!['Pictures 3'](screenshots/screenshot%203.png)
-!['Pictures 4'](screenshots/screenshot%204.png)
-!['Pictures 5'](screenshots/screenshot%205.png)
+!['Pictures 1'](screenshots/Screenshot1.png)
+!['Pictures 2'](screenshots/Screenshot2.png)
+!['Pictures 3'](screenshots/Screenshot3.png)
+!['Pictures 4'](screenshots/Screenshot4.png)
+!['Pictures 5'](screenshots/Screenshot5.png)
 
 ## Directory Structure
 
