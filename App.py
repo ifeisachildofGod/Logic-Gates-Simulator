@@ -35,7 +35,7 @@ class App:
         
         self.save = Save(self.file_path, {}, self._open_new, ['IFEs Logical File', '*.logic'], self._save_func)
         
-        self.reset_it = True
+        self.reset_it = False
         
         self.button_colors = '#777777'
         self.button_text_colors = 'white'
@@ -79,7 +79,7 @@ class App:
             " Edit Gate ": self.circuit_displayer._edit_circuit,
         }
         
-        self.menubar = MenuBar(self.screen, 0, 40, 20, 100, 25, 'transparent', 'grey20', 'transparent', 'lightblue', 'white', 'grey15', 2, 2, 2, menu_bar_options, dropdown_font_family='System')
+        self.menubar = MenuBar(self.screen, 0, 40, 20, 100, 25, 'grey15', 'grey15', 'lightblue', 'white', 'grey15', 2, 2, 2, menu_bar_options, dropdown_font_family='System')
         
         app_control_widget_width = 90
         app_control_widget_height = 25
@@ -131,7 +131,7 @@ class App:
         self._recolor_widgets(self._bg_color)
     
     def _init_circuit_displayer(self, new_file: str):
-        self.circuit_displayer = CircuitDisplay(self.screen, 100, self.add_buttons_border_offset, self.add_buttons_size)
+        self.circuit_displayer = CircuitDisplay(self.screen, len(self.bg_colors), self.add_buttons_border_offset, self.add_buttons_size)
         if self.file_path is not None and not new_file:
             with open(self.file_path, 'rb') as file_path:
                 value = pickle.load(file_path)
@@ -152,7 +152,6 @@ class App:
         menu_bar_ui_color = set_color(color, 120)
         app_control_ui_color = set_color(color, 30)
         app_control_buttons_ui_color = set_color(color, 210)
-        menu_bar_button_hover_color = set_color(color, 90)
         
         self.prev_circuit_button.configure(bg_color=buttons_ui_colors)
         self.next_circuit_button.configure(bg_color=buttons_ui_colors)
@@ -163,7 +162,6 @@ class App:
         self.app_control.configure(bg_color=app_control_ui_color)
         for button in self.app_control.buttons:
             button.configure(bg_color=app_control_buttons_ui_color)
-        self.menubar.configure(hover_color=menu_bar_button_hover_color)
     
     def _on_save(self):
         self.save.update_info(self.circuit_displayer.get_dict())
@@ -226,7 +224,6 @@ class App:
                     if not self.reset_it:
                         pygame.display.set_caption(f'{APP_NAME} - {self._file_path} - *Unsaved')
                         self.reset_it = True
-                    # self.save.save()
             
             self.screen.fill(self.BG_COLOR)
             

@@ -3,7 +3,7 @@ from copy import deepcopy
 from typing import Callable
 from widgets import Button
 from settings import *
-from modules import is_clicked
+from modules import is_clicked, set_color
 
 class SignalTransporter:
     def __init__(self, screen, color_on, color_off) -> None:
@@ -243,9 +243,9 @@ class Wire(SignalTransporter):
         }
     
     def set_dict(self, d: dict):
-        self.breakpoints = [d.pop('first_pos_tracker')]
+        self.breakpoints = [d['first_pos_tracker']]
         self.wire_move_buttons.clear()
-        b_p = d.pop('breakpoints')
+        b_p = d['breakpoints']
         for _, end in b_p:
             self.add_breakpoint(end)
         self.configure(**d)
@@ -293,7 +293,7 @@ class Wire(SignalTransporter):
     def _add_breakpoint_buttons(self, index):
         button = Button(self.screen,
                         (0, 0),
-                        (self.width, self.width),
+                        (self.width * 1.5, self.width * 1.5),
                         self.curr_color,
                         many_actions_one_click=True,
                         border_radius=self.width * 2)
@@ -350,7 +350,7 @@ class Wire(SignalTransporter):
     
     def connected_to(self, node: Node):
         if node.is_input:
-            assert not self.input_connected, 'An input has already been connected to this wire'
+            assert not self.input_connected, f'An input has already been connected to this wire'
             self.input_node = node
             self.input_connected = True
         if node.is_output:
@@ -387,7 +387,7 @@ class Wire(SignalTransporter):
                     self.breakpoints[1][0] = self.grid_mouse_pos
     
     def draw(self):
-        mouse_rect = pygame.Rect(0, 0, 4, 4)
+        mouse_rect = pygame.Rect(0, 0, 8, 8)
         mouse_rect.center = self.grid_mouse_pos
         
         for starting_point, stopping_point in self.breakpoints:
@@ -408,7 +408,7 @@ class Wire(SignalTransporter):
         self.ending_point = self.breakpoints[-1][1]
         for index, button in self.wire_move_buttons:
             button.update()
-            button.configure(bg_color='red', render=self.render)#self.curr_color)
+            button.configure(bg_color=set_color(self.curr_color, 110), render=self.render)
             button.set_pos(center=self.breakpoints[index][1])
         
         if self.input_node is not None:

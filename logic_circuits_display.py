@@ -24,20 +24,15 @@ class CircuitDisplay:
         self.circuit_index = -1
         
         self.textinput_font = pygame.font.SysFont('Consolas', 55)
+        self.mouse_pos = pygame.mouse.get_pos()
+        self.events = pygame.event.get()
         
-        def get_textinput_rect():
-            return self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, 30))
-        
-        def input_manager_validator(input):
-            self.textinput_rect = get_textinput_rect()
-            return len(input) < 25
-        
-        textinput_manager = TextInputManager(initial = DEFAULT_CIRCUIT_NAME, validator = input_manager_validator)
+        textinput_manager = TextInputManager(initial = DEFAULT_CIRCUIT_NAME, validator = lambda input: len(input) < 25)
         self.textinput = TextInputVisualizer(manager=textinput_manager, font_color=(255, 255, 255), font_object=self.textinput_font)
         self.textinput.cursor_width = 4
         self.textinput.cursor_color = [(c+200)%255 for c in self.textinput.font_color]
         self.textinput.cursor_visible = False
-        self.textinput_rect = get_textinput_rect()
+        self.textinput_rect = self._get_textinput_rect()
         
         self.edit_index = None
         self.edit_indices = []
@@ -127,11 +122,10 @@ class CircuitDisplay:
             'gate options': [gate_op.get_dict() for gate_op in self.gate_options[len(self.constant_gate_options):]]   
         }
     
-    def set_dict(self, obj: dict):
-        circuits_info = obj.pop('circuits')
-        circuit_index = obj.pop('circuit index')
-        gate_options_info = obj.pop('gate options')
-        
+    def set_dict(self, d: dict):
+        circuits_info = d['circuits']
+        circuit_index = d['circuit index']
+        gate_options_info = d['gate options']
         self.circuit_editors.clear()
         self.circuit_index = -1
         
@@ -149,10 +143,20 @@ class CircuitDisplay:
         for gate_op_info in gate_options_info:
             gate = GateBaseClass('_', self.screen, (-200, -200), 1, 1, lambda i: i[0], self.circuit.on_node_clicked)
             gate.set_dict(gate_op_info)
-            self.gate_circuits.append(gate)
-            self._recompile_gate_option_viewer()
-
-        self.theme_color = obj.pop('theme_color')
+            gate.update()
+            self.gate_options.append(gate)
+            self._add_gate_to_viewer(gate)
+            if isinstance(gate.logic_func_or_circuit_or_circuit_dict, dict):
+                tmp_circuit = Circuit('_', self.screen, 1, 1, 'red')
+                tmp_circuit.set_dict(gate.logic_func_or_circuit_or_circuit_dict)
+            else:
+                tmp_circuit = gate.logic_func_or_circuit_or_circuit_dict
+            self.gate_circuits.append(tmp_circuit)
+        
+        self.theme_color = d['theme_color']
+        self.textinput_focused = True
+        
+        self.screen.blit(self.textinput.surface, self.textinput_rect)
     
     def _remove_cicuit(self):
         self._change_circuit(self.circuit_index - 1)
@@ -181,6 +185,9 @@ class CircuitDisplay:
             self._recompile_gate_option_viewer()
         
         return func
+    
+    def _get_textinput_rect(self):
+        return self.textinput.surface.get_rect(midtop=(self.screen.get_width() / 2, 30))
     
     def _make_gate(self):
         new_gate = GateBaseClass(self.textinput.value,
@@ -298,6 +305,7 @@ class CircuitDisplay:
     def _update_textinput(self):
         mouse_rect = pygame.Rect(*self.mouse_pos, 1, 1)
         mouse_clicked, _, _, _ = is_clicked(mouse_rect, self.textinput_rect, on_left_clicked_func=self._force_textinput_focus)
+        
         if pygame.mouse.get_pressed()[0] and not mouse_clicked:
             if not self.has_textinput_focus:
                 self._free_textinput_focus()
@@ -309,6 +317,7 @@ class CircuitDisplay:
             self.textinput.update(self.events)
             self.circuit.name = self.textinput.value
         
+        self.textinput_rect = self._get_textinput_rect()
         self.screen.blit(self.textinput.surface, self.textinput_rect)
     
     def update(self, events):

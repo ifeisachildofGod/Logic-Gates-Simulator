@@ -52,7 +52,6 @@ pygame-*.log
 *.tmp
 
 # Project-specific
-themes.json
 test.py
 
 # Miscellaneous

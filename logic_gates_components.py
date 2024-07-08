@@ -36,13 +36,6 @@ class GateBaseClass:
         self.node_on_color = node_on_color
         self.node_off_color = node_off_color
         
-        if isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
-            self.logic_func = self.logic_func_or_circuit_or_circuit_dict
-        elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Circuit):
-            self.logic_circuit = self.logic_func_or_circuit_or_circuit_dict.copy()
-            self.logic_circuit.gate_update()
-            self.logic_func = self._logic_func
-        
         self.prev_pos = (0, 0)
         self.prev_mouse_pos = (0, 0)
         
@@ -63,7 +56,7 @@ class GateBaseClass:
                                  border_radius=max(self.node_size) * 5,
                                  is_click_toogleable=False,
                                  on_click_func=self.node_on_click_func) for ni in range(self.input_amt)]
-
+        
         self.button = Button(self.screen,
                              ((self.input_nodes[0].node_button.rect.right + self.node_pin_size[0]) if self.input_nodes else self.pos[0], self.pos[1]),
                              self.button_size,
@@ -76,7 +69,7 @@ class GateBaseClass:
                              )
         
         self.output_nodes = [Node(self.screen,
-                                  (self.button.rect.right + self.node_pin_size[0], self._get_node_y_pos(output_amt, no)),
+                                  (self.button.rect.right + self.node_pin_size[0], self._get_node_y_pos(self.output_amt, no)),
                                   self.node_size,
                                   color_on=self.node_on_color,
                                   color_off=self.node_off_color,
@@ -85,12 +78,17 @@ class GateBaseClass:
                                   border_radius=max(self.node_size) * 5,
                                   is_click_toogleable=False,
                                   on_click_func=self.node_on_click_func) for no in range(self.output_amt)]
+        
+        self.configure(logic_func_or_circuit_or_circuit_dict=logic_func_or_circuit_or_circuit_dict)
     
     def get_dict(self):
-        if isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
+        if isinstance(self.logic_func_or_circuit_or_circuit_dict, str | dict):
+            l_func = self.logic_func_or_circuit_or_circuit_dict
+        elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
             l_func = f'#function{self.name}'
-        else:
+        elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Circuit):
             l_func = self.logic_func_or_circuit_or_circuit_dict.get_dict()
+        
         return {
             'name': self.name,
             'input_amt': self.input_amt,
@@ -98,7 +96,7 @@ class GateBaseClass:
             'logic_func_or_circuit_or_circuit_dict': l_func,
             'node_on_color': self.node_on_color,
             'node_off_color': self.node_off_color,
-            'pos': self.get_rect().topleft,
+            'pos': self.pos,
         }
     
     def set_dict(self, d: dict):
@@ -132,12 +130,6 @@ class GateBaseClass:
             
             self.button.configure(screen=self.screen)
         
-        pos = kwargs.get('pos')
-        if pos is not None:
-            self.pos = pos
-            rect = self.get_rect()
-            self._on_move((self.pos[0] + (rect.width / 2), self.pos[1] + (rect.height / 2)))
-        
         name = kwargs.get('name')
         if name is not None:
             self.name = name
@@ -145,64 +137,33 @@ class GateBaseClass:
             size = (text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2)))
             self.button.configure(size=size, image=text_surf)
         
-        input_amt = kwargs.get('input_amt')
-        if input_amt is not None:
-            self.input_amt = input_amt
-            self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
-            self.button.configure(size=self.button_size)
-            new_node = Node(self.screen,
-                            (0, 0),
-                            self.node_size,
-                            color_on=self.node_on_color,
-                            color_off=self.node_off_color,
-                            static=False,
-                            is_input=True,
-                            border_radius=max(self.node_size) * 5,
-                            is_click_toogleable=False,
-                            on_click_func=self.node_on_click_func)
-            self.input_nodes.append(new_node)
-            for index, node in enumerate(self.input_nodes):
-                node.configure(pos=(self.pos[0], self._get_node_y_pos(self.input_amt, index)))
-        
-        output_amt = kwargs.get('output_amt')
-        if output_amt is not None:
-            self.output_amt = output_amt
-            self.button_size = text_surf.get_width() + (GATE_TEXT_BORDER_OFFSET_X * 2), max((GATE_TEXT_BORDER_OFFSET_Y + NODE_SIZE) * max(self.input_amt, self.output_amt), text_surf.get_height() + (GATE_TEXT_BORDER_OFFSET_Y * 2))
-            self.button.configure(size=self.button_size)
-            new_node = Node(self.screen,
-                            (0, 0),
-                            self.node_size,
-                            color_on=self.node_on_color,
-                            color_off=self.node_off_color,
-                            static=False,
-                            is_input=True,
-                            border_radius=max(self.node_size) * 5,
-                            is_click_toogleable=False,
-                            on_click_func=self.node_on_click_func)
-            self.input_nodes.append(new_node)
-            for index, node in enumerate(self.input_nodes):
-                node.configure(pos=(self.button.rect.right + self.node_pin_size[0], self._get_node_y_pos(output_amt, index)))
+        pos = kwargs.get('pos')
+        if pos is not None:
+            self.pos = pos
+            rect = self.get_rect()
+            self._on_move((self.pos[0] + (rect.width / 2), self.pos[1] + (rect.height / 2)))
         
         logic_func_or_circuit_or_circuit_dict = kwargs.get('logic_func_or_circuit_or_circuit_dict')
         if logic_func_or_circuit_or_circuit_dict is not None:
             self.logic_func_or_circuit_or_circuit_dict = logic_func_or_circuit_or_circuit_dict
-            if isinstance(self.logic_func_or_circuit_or_circuit_dict, str):
-                if '#function' in self.logic_func_or_circuit_or_circuit_dict:
-                    match self.logic_func_or_circuit_or_circuit_dict.replace('#function', ''):
-                        case 'And':
-                            self.logic_func_or_circuit_or_circuit_dict = AndGate(self.screen, self.get_rect().topleft, self.node_on_click_func).logic_func
-                        case 'Not':
-                            self.logic_func_or_circuit_or_circuit_dict = NotGate(self.screen, self.get_rect().topleft, self.node_on_click_func).logic_func
-                        case 'Timer':
-                            self.logic_func_or_circuit_or_circuit_dict = TimerGate(self.screen, self.get_rect().topleft, self.node_on_click_func).logic_func
-            
-            if isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
-                self.logic_func = self.logic_func_or_circuit_or_circuit_dict
-            elif isinstance(self.logic_func_or_circuit_or_circuit_dict, dict):
+            if isinstance(self.logic_func_or_circuit_or_circuit_dict, dict):
                 self.logic_circuit = Circuit(self.name, self.screen, 1, 1, 'red')
                 self.logic_circuit.set_dict(self.logic_func_or_circuit_or_circuit_dict)
                 self.logic_circuit.gate_update()
-            elif isinstance(self.logic_func_or_circuit_or_circuit_dict, GateBaseClass):
+                self.logic_func = self._logic_func
+            elif isinstance(self.logic_func_or_circuit_or_circuit_dict, str):
+                if '#function' in self.logic_func_or_circuit_or_circuit_dict:
+                    rect = self.get_rect()
+                    match self.logic_func_or_circuit_or_circuit_dict.replace('#function', ''):
+                        case 'And':
+                            self.logic_func = AndGate(self.screen, rect.topleft, self.node_on_click_func).logic_func
+                        case 'Not':
+                            self.logic_func = NotGate(self.screen, rect.topleft, self.node_on_click_func).logic_func
+                        case 'Timer':
+                            self.logic_func = TimerGate(self.screen, rect.topleft, self.node_on_click_func).logic_func
+            elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Callable):
+                self.logic_func = self.logic_func_or_circuit_or_circuit_dict
+            elif isinstance(self.logic_func_or_circuit_or_circuit_dict, Circuit):
                 self.logic_circuit = self.logic_func_or_circuit_or_circuit_dict.copy()
                 self.logic_circuit.gate_update()
                 self.logic_func = self._logic_func
@@ -255,6 +216,36 @@ class GateBaseClass:
             self.node_on_click_func = node_on_click_func
             for node in self.input_nodes + self.output_nodes:
                 node.configure(on_click_func=self.node_on_click_func)
+        
+        input_amt = kwargs.get('input_amt')
+        if input_amt is not None:
+            self.input_amt = input_amt
+            add = (-(self.button.rect.height / 2) + (self.node_size[1] / 2))
+            self.input_nodes = [Node(self.screen,
+                                    (self.pos[0], self._get_node_y_pos(self.input_amt, ni) + add),
+                                    self.node_size,
+                                    color_on=self.node_on_color,
+                                    color_off=self.node_off_color,
+                                    static=False,
+                                    is_input=True,
+                                    border_radius=max(self.node_size) * 5,
+                                    is_click_toogleable=False,
+                                    on_click_func=self.node_on_click_func) for ni in range(self.input_amt)]
+        
+        output_amt = kwargs.get('output_amt')
+        if output_amt is not None:
+            self.output_amt = output_amt
+            add = (-(self.button.rect.height / 2) + (self.node_size[1] / 2))
+            self.output_nodes = [Node(self.screen,
+                                    (self.button.rect.right + self.node_pin_size[0], self._get_node_y_pos(self.output_amt, no) + add),
+                                    self.node_size,
+                                    color_on=self.node_on_color,
+                                    color_off=self.node_off_color,
+                                    static=False,
+                                    is_input=False,
+                                    border_radius=max(self.node_size) * 5,
+                                    is_click_toogleable=False,
+                                    on_click_func=self.node_on_click_func) for no in range(self.output_amt)]
     
     def _on_move(self, dest):
         dest_x, dest_y = dest
@@ -289,6 +280,10 @@ class GateBaseClass:
         self.button.set_pos(center=pos)
         for node in self.input_nodes + self.output_nodes:
             node.configure(pos=(node.get_rect().x + (self.button.rect.x - prev_x), node.get_rect().y + (self.button.rect.y - prev_y)))
+        if self.input_nodes:
+            self.pos = self.input_nodes[0].node_button.rect.topleft
+        else:
+            self.pos = self.button.rect.topleft
     
     def get_input_nodes(self):
         return self.input_nodes
@@ -438,8 +433,8 @@ class Circuit:
             'name': self.name,
             'node_base_line': self.node_base_line,
             'add_nodes_buttons_height': self.add_nodes_buttons_height,
-            'theme_color': self.theme_color,
             
+            'theme_color': self.theme_color,
             'input_node_objects': [[but.get_dict(), node.get_dict()] for but, node in self.input_node_objects],
             'output_nodes': [node.get_dict() for node in self.output_nodes],
             'gates': [gate.get_dict() for gate in self.gates],
@@ -448,11 +443,11 @@ class Circuit:
         }
     
     def set_dict(self, d: dict):
-        input_node_objects = d.pop('input_node_objects')
-        output_nodes = d.pop('output_nodes')
-        gates = d.pop('gates')
-        wires = d.pop('wires')
-        wire_connected_indexes = d.pop('wire_connected_indexes')
+        input_node_objects = d['input_node_objects']
+        output_nodes = d['output_nodes']
+        gates = d['gates']
+        wires = d['wires']
+        wire_connected_indexes = d['wire_connected_indexes']
         
         self.input_node_objects.clear()
         self.output_nodes.clear()
@@ -462,25 +457,27 @@ class Circuit:
         self.update_input_button_removal = True
         self.update_output_button_removal = True
         
-        self.__dict__.update(d)
+        self.name = d['name']
+        self.node_base_line = d['node_base_line']
+        self.add_nodes_buttons_height = d['add_nodes_buttons_height']
         
         def make_input_button_func(new_node): return lambda: new_node.set_state(not new_node.get_state())
         
         for but_info, node_info in input_node_objects:
             new_but = Button(self.screen, (0, 0), (0, 0), 'red')
             new_but.set_dict(but_info)
-            new_node = Node(self.screen, (0, 0), (0, 0), 'red', 'red', True)
+            new_node = Node(self.screen, (0, 0), (0, 0), 'red', 'red', True, on_click_func=self.on_node_clicked)
             new_node.set_dict(node_info)
             new_but.configure(on_left_mouse_button_clicked=make_input_button_func(new_node))
             self.input_node_objects.append([new_but, new_node])
         
         for node_info in output_nodes:
-            new_node = Node(self.screen, (0, 0), (0, 0), 'red', 'red', True)
+            new_node = Node(self.screen, (0, 0), (0, 0), 'red', 'red', True, on_click_func=self.on_node_clicked)
             new_node.set_dict(node_info)
             self.output_nodes.append(new_node)
         
         for gate_info in gates:
-            new_gate = GateBaseClass('_', self.screen, gate_info['pos'], 1, 1, lambda l: l, self.on_node_clicked)
+            new_gate = GateBaseClass('_', self.screen, (20, 20), 1, 1, lambda l: l, self.on_node_clicked)
             new_gate.set_dict(gate_info)
             self.gates.append(new_gate)
         
@@ -496,8 +493,8 @@ class Circuit:
         for index, node_connection in enumerate(wire_connected_indexes):
             for node_index in node_connection:
                 nodes[node_index].connect(self.wires[index])
-        
-        self.theme_color = d.pop('theme_color')
+
+        self.theme_color = d['theme_color']
     
     def _get_node_on_color(self, color):
         on_color = []
@@ -509,12 +506,6 @@ class Circuit:
     
     def _get_node_off_color(self, color):
         return set_color(color, 125)
-        # on_color = []
-        # for i, v in enumerate(set_color(color, 255)):
-        #     v = (v * i) % 255
-        #     on_color.append(v)
-        
-        # return on_color
     
     def _set_gate_color(self, gate: GateBaseClass, color):
         gate_body_color = set_color(color, 200)
@@ -652,18 +643,7 @@ class Circuit:
                         if is_touching_a_connection:
                             if not circular_wire_connection:
                                 nodes.connect(self.wire)
-                                # self.wire_connected_trackers[wire] = False
                             break
-            
-            # is_touching_a_connection = input_node.node_button.rect.collidepoint(self.mouse_pos)
-            
-            # if self.wire is not None:
-            #     circular_wire_connection = (((input_node.is_input and self.wire.input_connected)
-            #                                     or
-            #                                  (input_node.is_output and self.wire.output_connected))
-            #                             if is_touching_a_connection else False)
-            #     if not circular_wire_connection:
-            #         input_node.connect(self.wire)
     
     def _make_input_remove_node_func(self, index):
         def func():
@@ -709,16 +689,10 @@ class Circuit:
     
     def make_add_gate_func(self, gate: GateBaseClass):
         def func():
-            # def sub_func():
-                # time.sleep(5)
-                new_gate = gate.copy()
-                new_gate.set_pos(self.grid_mouse_pos)
-                self.gates.append(new_gate)
-                self._recolor(self.theme_color)
-                time.sleep(0.1)
-            # t = threading.Thread(target=sub_func)
-            # t.daemon = True
-            # t.start()
+            new_gate = gate.copy()
+            new_gate.set_pos(self.grid_mouse_pos)
+            self.gates.append(new_gate)
+            self._recolor(self.theme_color)
         
         return func
     
@@ -776,10 +750,6 @@ class Circuit:
                                                         if is_touching_a_connection else False)
                             self.wire = wire
                             if is_touching_a_connection:
-                                if not circular_wire_connection:
-                                    # nodes.connect(wire)
-                                    pass
-                                    # self.wire_connected_trackers[wire] = False
                                 break
                         else:
                             if True not in [button.update()[-1] for _, button in wire.wire_move_buttons]:
@@ -795,9 +765,6 @@ class Circuit:
                     wire.move_breakpoint_ending_point(-1, self.grid_mouse_pos)
                 else:
                     wire.move_breakpoint_starting_point(0, self.grid_mouse_pos)
-            
-            # if self.wire_connected_trackers[wire] is None:
-            #     self.wire_connected_trackers[wire] = True
             
             wire.update()
             wire.configure(render=self.render, mouse_pos=self.mouse_pos)

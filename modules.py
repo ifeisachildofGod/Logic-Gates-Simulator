@@ -58,7 +58,7 @@ _hover_tracker_dict = {}
 _not_hover_tracker_dict = {}
 
 def is_clicked(mouse_rect: pygame.Rect,
-               target_rect: pygame.Rect,
+               target: pygame.Rect | tuple[float, float],
                hover_func: Callable = None,
                not_hover_func: Callable = None,
                on_left_clicked_func: Callable = None,
@@ -79,9 +79,12 @@ def is_clicked(mouse_rect: pygame.Rect,
     global _left_mouse_clicked_dict, _left_mouse_clicked_outside_dict, _middle_mouse_clicked_dict, _middle_mouse_clicked_outside_dict, _right_mouse_clicked_dict, _right_mouse_clicked_outside_dict, _left_mouse_tracker_clicked_dict, _left_mouse_tracker_not_clicked_dict, _middle_mouse_tracker_clicked_dict, _middle_mouse_tracker_not_clicked_dict, _right_mouse_tracker_clicked_dict, _right_mouse_tracker_not_clicked_dict, _hover_tracker_dict, _not_hover_tracker_dict
 
     left_mouse_clicked, middle_mouse_clicked, right_mouse_clicked = pygame.mouse.get_pressed()
-    mouse_collission = mouse_rect.colliderect(target_rect)
+    if isinstance(target, tuple):
+        mouse_collission = mouse_rect.clipline(target)
+    else:
+        mouse_collission = mouse_rect.colliderect(target)
     
-    target_rect_key = repr(target_rect)
+    target_rect_key = repr(target)
     
     if target_rect_key not in _left_mouse_clicked_dict:
         _left_mouse_clicked_dict[target_rect_key] = False
