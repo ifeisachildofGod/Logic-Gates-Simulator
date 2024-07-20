@@ -144,7 +144,7 @@ class App:
         self.file_path = self.save.file_path
     
     def _open_new(self, file_path, new_file):
-        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.mainpy_file_path, file_path, str(int(new_file))]))
+        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.mainpy_file_path, file_path, str(int(new_file))], creationflags=subprocess.CREATE_NO_WINDOW))
         subprocess_thread.daemon = True
         subprocess_thread.start()
     
