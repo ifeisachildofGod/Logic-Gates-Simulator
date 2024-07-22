@@ -16,7 +16,7 @@ make_self_executable
 # Check if pyinstaller is installed
 if ! command -v pyinstaller &> /dev/null
 then
-    echo "PyInstaller could not be found. Please install it first."
+    echo "PyInstaller could not be found. Please install it first run 'pip install pyinstaller'."
     exit 1
 fi
 
@@ -27,9 +27,9 @@ if [ ! -f "main.py" ]; then
 fi
 
 # Check for logos/logo.ico in the current directory
-ICON_PATH="logos/logo.ico"
+ICON_PATH="assets/logos/logo.ico"
 if [ ! -f "$ICON_PATH" ]; then
-    echo "logo.ico not found in the logos directory."
+    echo "logo.ico not found in the assets/logos directory."
     exit 1
 fi
 
