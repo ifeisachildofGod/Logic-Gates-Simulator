@@ -2,7 +2,7 @@
 from typing import Final
 
 SCR_WIDTH: Final = 1200
-SCR_HEIGHT: Final = 550
+SCR_HEIGHT: Final = 600
 FPS: Final = 60
 
 GATE_WIDTH = 100

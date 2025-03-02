@@ -74,6 +74,8 @@ class Button:
         self.middle_mouse_clicked_outside = True
         self.right_mouse_clicked_outside = True
         
+        self.new_mouse_pos = False
+        
         self.button_opacity = 255
         self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
         
@@ -351,7 +353,9 @@ class Button:
         clicked_info = []
         
         if not self.disabled:
-            mouse_rect = pygame.Rect(*self.mouse_pos, 1, 1)
+            mouse_rect = pygame.Rect(0, 0, 2, 2)
+            mouse_rect.center = self.mouse_pos[0:2]
+            
             left_mouse_clicked = pygame.mouse.get_pressed()[0]
             middle_mouse_clicked = pygame.mouse.get_pressed()[1]
             right_mouse_clicked = pygame.mouse.get_pressed()[2]
@@ -374,7 +378,8 @@ class Button:
         if self.render:
             self._draw()
         
-        self.mouse_pos = pygame.mouse.get_pos()
+        if not self.new_mouse_pos:
+            self.mouse_pos = pygame.mouse.get_pos()
         
         return clicked_info
     
@@ -469,6 +474,8 @@ class Button:
         match call_type:
             case 'on right clicked':
                 self.button_opacity = self.on_click_shade_val
+                if not self.hover:
+                    self.button_opacity = 255
                 if self.start_right_click_check:
                     if call_func is not None:
                         call_func()
@@ -476,6 +483,8 @@ class Button:
                     self.start_right_click_check = self.start_right_click_check or many_actions_one_click
             case 'on middle clicked':
                 self.button_opacity = self.on_click_shade_val
+                if not self.hover:
+                    self.button_opacity = 255
                 if self.start_middle_click_check:
                     if call_func is not None:
                         call_func()
@@ -483,6 +492,8 @@ class Button:
                     self.start_middle_click_check = self.start_middle_click_check or many_actions_one_click
             case 'on left clicked':
                 self.button_opacity = self.on_click_shade_val
+                if not self.hover:
+                    self.button_opacity = 255
                 self.button_color = set_color(self.bg_color, self.button_opacity) if self.bg_color != 'transparent' else None
                 if self.start_left_click_check:
                     if call_func is not None:
@@ -509,6 +520,8 @@ class Button:
             case 'on hover':
                 if self.hover:
                     self.button_opacity = self.on_hover_shade_val
+                    if not self.hover:
+                        self.button_opacity = 255
                     if self.hover_color is not None:
                         self.button_color = self.hover_color if self.hover_color != 'transparent' else None
                     else:
@@ -518,7 +531,11 @@ class Button:
     
     def _draw(self):
         if self.button_color is not None:
-            pygame.draw.rect(self.screen, self.button_color if not self.disabled else set_color(self.button_color, 150), self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
+            try:
+                color = self.button_color if not self.disabled else set_color(self.button_color, 150)
+                pygame.draw.rect(self.screen, color, self.rect, 0, self.border_radius, self.border_top_left_radius, self.border_top_right_radius, self.border_bottom_left_radius, self.border_bottom_right_radius)
+            except:
+                print(color)
         if self.image_surf is not None:
             self.screen.blit(self.image_surf, self.img_rect)
     
@@ -852,6 +869,8 @@ class MenuBar:
         self.text_color = 'white' if sum(set_color(self.bg_color, 255)) / 3 < 125 else 'black'
         
         self._compile_menus()
+        
+        self.bg_rect = pygame.Rect(0, self.y_pos, self.screen.get_width(), self.button_height + (self.y_border_offset * 2))
     
     def configure(self, **kwargs):
         screen = kwargs.get('screen')
@@ -960,7 +979,7 @@ class MenuBar:
         return func
     
     def update(self):
-        pygame.draw.rect(self.screen, self.bg_color, (0, self.y_pos, self.screen.get_width(), self.button_height + (self.y_border_offset * 2)))
+        pygame.draw.rect(self.screen, self.bg_color, self.bg_rect)
         
         buttons_clicked = []
         for button in self.menu_option_buttons:

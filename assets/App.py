@@ -47,17 +47,6 @@ class App:
         
         self._init_circuit_displayer(new_file)
         
-        self.detailed_font = pygame.font.SysFont('Arial', 500)
-        self.add_node_font = pygame.font.SysFont('Arial', 45)
-        self.edit_button_font = pygame.font.SysFont('Sans Serif', 20)
-        
-        self.delete_circuit_button = Button(self.screen, (0, 0), (10, 10), 'red', image=self.detailed_font.render('x', True, 'white'), on_left_mouse_button_clicked=self.circuit_displayer._remove_cicuit, border_radius=0, scale_img=True)
-        
-        self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index - 1))
-        self.next_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('>', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index + 1))
-        self.add_input_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer.circuit.add_input(), border_radius=self.border_radius)
-        self.add_output_button = Button(self.screen, (0, 0), self.add_buttons_size, self.button_colors, image=self.add_node_font.render('+', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer.circuit.add_output(), border_radius=self.border_radius)
-        
         menu_bar_options = {
             "File": {
                 'New': self.save.new,
@@ -76,11 +65,20 @@ class App:
         }
         app_control_options = {
             "New Circuit": self.circuit_displayer._make_new_circuit,
-            " Make Gate ": self.circuit_displayer._make_gate,
+            "   Create  ": self.circuit_displayer._make_gate,
             " Edit Gate ": self.circuit_displayer._edit_circuit,
         }
         
         self.menubar = MenuBar(self.screen, 0, 40, 20, 100, 25, 'grey15', 'grey15', 'lightblue', 'white', 'grey15', 2, 2, 2, menu_bar_options, dropdown_font_family='System')
+        
+        self.detailed_font = pygame.font.SysFont('Arial', 500)
+        self.add_node_font = pygame.font.SysFont('Arial', 45)
+        self.edit_button_font = pygame.font.SysFont('Sans Serif', 20)
+        
+        self.delete_circuit_button = Button(self.screen, (0, 0), (10, 10), 'red', image=self.detailed_font.render('x', True, 'white'), on_left_mouse_button_clicked=self.circuit_displayer._remove_cicuit, border_radius=0, scale_img=True)
+        
+        self.prev_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('<', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index - 1))
+        self.next_circuit_button = Button(self.screen, (0, 0), (20, 20), self.button_colors, image=self.edit_button_font.render('>', True, self.button_text_colors), on_left_mouse_button_clicked=lambda: self.circuit_displayer._change_circuit(self.circuit_displayer.circuit_index + 1))
         
         app_control_widget_width = 90
         app_control_widget_height = 25
@@ -107,8 +105,6 @@ class App:
         self.delete_circuit_button.set_pos(bottomright=self.app_control.bg_rect.topright)
         self.prev_circuit_button.set_pos(midright=(self.app_control.bg_rect.left, self.app_control.bg_rect.centery))
         self.next_circuit_button.set_pos(midleft=(self.app_control.bg_rect.right, self.app_control.bg_rect.centery))
-        self.add_input_button.set_pos(midbottom=(self.border_offset, self.screen.get_height() - self.border_offset))
-        self.add_output_button.set_pos(midbottom=(self.screen.get_width() - self.border_offset, self.screen.get_height() - self.border_offset))
         
         self.gate_circuit_index_tracker = None
     
@@ -132,7 +128,7 @@ class App:
         self._recolor_widgets(self._bg_color)
     
     def _init_circuit_displayer(self, new_file: str):
-        self.circuit_displayer = CircuitDisplay(self.screen, len(self.bg_colors), self.add_buttons_border_offset, self.add_buttons_size)
+        self.circuit_displayer = CircuitDisplay(self.screen, len(self.bg_colors), self.add_buttons_border_offset, self.add_buttons_size, 40)
         if self.file_path is not None and not new_file:
             with open(self.file_path, 'rb') as file_path:
                 value = pickle.load(file_path)
@@ -144,7 +140,7 @@ class App:
         self.file_path = self.save.file_path
     
     def _open_new(self, file_path, new_file):
-        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.mainpy_file_path, file_path, str(int(new_file))], creationflags=subprocess.CREATE_NO_WINDOW))
+        subprocess_thread = threading.Thread(target=lambda: subprocess.run(['py', self.mainpy_file_path, file_path, str(int(new_file))]))
         subprocess_thread.daemon = True
         subprocess_thread.start()
     
@@ -156,8 +152,6 @@ class App:
         
         self.prev_circuit_button.configure(bg_color=buttons_ui_colors)
         self.next_circuit_button.configure(bg_color=buttons_ui_colors)
-        self.add_input_button.configure(bg_color=buttons_ui_colors)
-        self.add_output_button.configure(bg_color=buttons_ui_colors)
         
         self.menubar.configure(bg_color=menu_bar_ui_color)
         self.app_control.configure(bg_color=app_control_ui_color)
@@ -185,11 +179,8 @@ class App:
         self.fps_rect = self.fps_surf.get_rect(bottomright=(SCR_WIDTH - 20, SCR_HEIGHT))
         self.screen.blit(self.fps_surf, self.fps_rect)
         
-        self.circuit_displayer.update(self.events)
+        self.circuit_displayer.update(self.events, self.BG_COLOR)
         self.app_control.buttons[-1].configure(disabled=self.circuit_displayer.edit_index is None)
-        
-        self.add_input_button.update()
-        self.add_output_button.update()
         
         if self.circuit_displayer.circuit_index > 0:
             self.delete_circuit_button.update()

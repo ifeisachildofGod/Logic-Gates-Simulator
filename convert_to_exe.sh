@@ -16,8 +16,10 @@ make_self_executable
 # Check if pyinstaller is installed
 if ! command -v pyinstaller &> /dev/null
 then
-    echo "PyInstaller could not be found. Please install it first run 'pip install pyinstaller'."
-    exit 1
+    echo "PyInstaller could not be found. Installing pyinstaller..."
+    pip install pyinstaller
+    echo "PyInstaller is not installed. Please run it again."
+    exit 0
 fi
 
 # Check if main.py exists in the current directory

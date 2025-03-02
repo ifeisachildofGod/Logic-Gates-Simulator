@@ -282,7 +282,7 @@ class Wire(SignalTransporter):
         return [button for _, button in self.wire_move_buttons]
     
     def is_connected_to(self, node: Node):
-        return self.input_node is node or self.output_node is node
+        return (self.input_node is node) or (self.output_node is node)
     
     def _move_breakpoint(self, index, button: Button):
         def func():
